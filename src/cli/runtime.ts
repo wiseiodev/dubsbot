@@ -1,4 +1,5 @@
 import { AgentOrchestrator } from '../agent/orchestrator';
+import { loadAgentsConfig } from '../config/agents-loader';
 import { createDb } from '../db/client';
 import { runMigrations } from '../db/migrate';
 import { OptionalOtelExporter } from '../observability/otel';
@@ -12,6 +13,7 @@ import { ToolRegistry } from '../tools/registry';
 export async function createRuntime() {
   await runMigrations();
   const db = await createDb();
+  const agentsConfig = await loadAgentsConfig(process.cwd());
   const provider = createProviderAdapter(detectProvider());
   const policyEngine = new DefaultPolicyEngine(createDefaultApprovalPolicy());
   const orchestrator = new AgentOrchestrator({
@@ -28,6 +30,13 @@ export async function createRuntime() {
     traces: new TraceStore(),
     transcripts: new TranscriptStore(),
     otel: new OptionalOtelExporter(),
-    tools: new ToolRegistry(),
+    tools: new ToolRegistry({
+      policyEngine,
+      defaultMode: 'interactive',
+      agentsConfig,
+      onWarning: (message) => {
+        console.warn(`[agents-config] ${message}`);
+      },
+    }),
   };
 }

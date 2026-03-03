@@ -3,6 +3,7 @@ import TextInput from 'ink-text-input';
 import { useMemo, useRef, useState } from 'react';
 import type { AgentOrchestrator } from '../agent/orchestrator';
 import type { TraceStore } from '../observability/traces';
+import type { TranscriptStore } from '../observability/transcripts';
 import type { ToolRegistry } from '../tools/registry';
 import type { ToolInvocation, ToolResult } from '../tools/schemas';
 import {
@@ -20,6 +21,7 @@ type AppProps = {
   orchestrator: AgentOrchestrator;
   tools: ToolRegistry;
   traces: TraceStore;
+  transcripts: TranscriptStore;
 };
 
 type PendingApproval = {
@@ -46,7 +48,7 @@ const APPROVAL_COMMANDS: SlashCommand[] = [
   { command: '/help', description: 'Show available slash commands' },
 ];
 
-export function ChatApp({ orchestrator, tools, traces }: AppProps) {
+export function ChatApp({ orchestrator, tools, traces, transcripts }: AppProps) {
   const [value, setValue] = useState('');
   const [output, setOutput] = useState<string>('');
   const [busy, setBusy] = useState(false);
@@ -118,8 +120,11 @@ export function ChatApp({ orchestrator, tools, traces }: AppProps) {
       }
 
       const invocation = checkpoint.toolPlan[index];
-      const sensitive = isSensitiveAction(invocation);
-      if (sensitive) {
+      const policyResult = await tools.invoke(invocation, { mode: 'interactive' });
+      const policyOutcome = getPolicyOutcome(policyResult);
+
+      let result = policyResult;
+      if (policyOutcome?.requiresApproval) {
         if (!(await transitionPhase('awaiting_approval'))) {
           setOutput('Error: invalid lifecycle transition while awaiting approval.');
           return;
@@ -154,13 +159,31 @@ export function ChatApp({ orchestrator, tools, traces }: AppProps) {
           setOutput('Error: invalid lifecycle transition while re-entering execution.');
           return;
         }
+
+        result = await tools.invoke(invocation, {
+          mode: 'interactive',
+          approvalGranted: true,
+        });
       }
 
-      const result = await tools.invoke(invocation);
       assistantMessage += `\n${formatToolResult(result)}`;
+      const observabilityPayload = buildExecutionPayload(invocation, result);
+      await traces.write({
+        timestamp: new Date().toISOString(),
+        type: 'tool.execution',
+        sessionId: SESSION_ID,
+        payload: observabilityPayload,
+      });
+      await transcripts.write({
+        timestamp: new Date().toISOString(),
+        sessionId: SESSION_ID,
+        role: 'system',
+        text: formatToolResult(result),
+        payload: observabilityPayload,
+      });
       completed.add(index);
 
-      if (sensitive) {
+      if (policyOutcome?.requiresApproval || isSensitiveAction(invocation)) {
         await saveCheckpoint({
           ...checkpoint,
           phase: lifecycleRef.current.getPhase(),
@@ -369,6 +392,59 @@ function formatToolResult(result: ToolResult): string {
   }
 
   return `Tool ${result.tool} failed: ${result.summary}${result.stderr ? ` (${result.stderr.trim()})` : ''}`;
+}
+
+function getPolicyOutcome(result: ToolResult): {
+  allowed: boolean;
+  requiresApproval: boolean;
+  reason: string;
+  sideEffect: ToolInvocation['sideEffect'];
+} | null {
+  const candidate = result.payload.policyOutcome;
+  if (!candidate || typeof candidate !== 'object') {
+    return null;
+  }
+  const policyOutcome = candidate as Record<string, unknown>;
+  if (
+    typeof policyOutcome.allowed !== 'boolean' ||
+    typeof policyOutcome.requiresApproval !== 'boolean' ||
+    typeof policyOutcome.reason !== 'string' ||
+    (policyOutcome.sideEffect !== 'read' &&
+      policyOutcome.sideEffect !== 'write' &&
+      policyOutcome.sideEffect !== 'destructive' &&
+      policyOutcome.sideEffect !== 'network')
+  ) {
+    return null;
+  }
+  return {
+    allowed: policyOutcome.allowed,
+    requiresApproval: policyOutcome.requiresApproval,
+    reason: policyOutcome.reason,
+    sideEffect: policyOutcome.sideEffect,
+  };
+}
+
+function buildExecutionPayload(
+  invocation: ToolInvocation,
+  result: ToolResult
+): Record<string, unknown> {
+  const policyOutcome = getPolicyOutcome(result);
+  const resolvedCommand =
+    typeof result.payload.resolvedCommand === 'string'
+      ? result.payload.resolvedCommand
+      : typeof result.payload.command === 'string'
+        ? result.payload.command
+        : null;
+  return {
+    actionName:
+      typeof result.payload.actionName === 'string' ? result.payload.actionName : invocation.tool,
+    tool: invocation.tool,
+    resolvedCommand,
+    policyOutcome,
+    executionSummary: result.summary,
+    ok: result.ok,
+    exitCode: result.exitCode,
+  };
 }
 
 function formatHelpText(commands: SlashCommand[]): string {

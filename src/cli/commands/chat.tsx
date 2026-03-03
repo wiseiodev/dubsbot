@@ -45,6 +45,11 @@ export async function runChatCommand(prompt?: string): Promise<void> {
   }
 
   render(
-    <ChatApp orchestrator={runtime.orchestrator} tools={runtime.tools} traces={runtime.traces} />
+    <ChatApp
+      orchestrator={runtime.orchestrator}
+      tools={runtime.tools}
+      traces={runtime.traces}
+      transcripts={runtime.transcripts}
+    />
   );
 }
