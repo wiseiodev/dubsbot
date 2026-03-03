@@ -87,17 +87,25 @@ describe('integration: daemon and watcher loop lifecycle', () => {
       onTerminate,
     });
 
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const timeoutPromise = new Promise<{ processed: string[]; termination: string; error: string }>(
+      (resolve) => {
+        timeoutId = setTimeout(() => {
+          resolve({ processed: [], termination: 'timeout', error: 'loop hung' });
+        }, 200);
+      }
+    );
+
     const result = await Promise.race([
       runWatcherLoop({
         work: [{ id: 'first' }, { id: 'second', shouldFail: true }, { id: 'third' }],
         controller,
       }),
-      new Promise<{ processed: string[]; termination: string; error: string }>((resolve) => {
-        setTimeout(() => {
-          resolve({ processed: [], termination: 'timeout', error: 'loop hung' });
-        }, 200);
-      }),
+      timeoutPromise,
     ]);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
 
     expect(result.termination).not.toBe('timeout');
     expect(result.termination).toBe('fatal_error');
@@ -108,18 +116,24 @@ describe('integration: daemon and watcher loop lifecycle', () => {
   it('loop scenarios include timeout safeguards for cleanup', async () => {
     const controller = createLoopController({ maxIterations: 2 });
 
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const timeoutPromise = new Promise<{ processed: string[]; termination: string }>((resolve) => {
+      timeoutId = setTimeout(() => resolve({ processed: [], termination: 'timeout' }), 200);
+    });
+
     const run = Promise.race([
       runDaemonLoop({
         work: [{ id: 'one' }, { id: 'two' }, { id: 'three' }],
         controller,
         onProcess: async () => undefined,
       }),
-      new Promise<{ processed: string[]; termination: string }>((resolve) => {
-        setTimeout(() => resolve({ processed: [], termination: 'timeout' }), 200);
-      }),
+      timeoutPromise,
     ]);
 
     const result = await run;
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
     expect(result.termination).not.toBe('timeout');
   });
 });

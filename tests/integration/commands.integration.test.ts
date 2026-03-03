@@ -25,14 +25,15 @@ import { runIndexCommand } from '../../src/cli/commands/index';
 import { runPlanCommand } from '../../src/cli/commands/plan';
 
 describe('integration: command orchestration flows', () => {
-  const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    logSpy.mockClear();
+    logSpy.mockRestore();
   });
 
   it('chat one-shot success path emits expected output state', async () => {
@@ -85,14 +86,19 @@ describe('integration: command orchestration flows', () => {
     });
     mocks.runFullIndex.mockRejectedValueOnce(new Error('temporary index error'));
 
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const timeoutPromise = new Promise<'timeout'>((resolve) => {
+      timeoutId = setTimeout(() => resolve('timeout'), 200);
+    });
     const result = await Promise.race([
       runIndexCommand('/tmp/project')
         .then(() => 'resolved')
         .catch(() => 'rejected'),
-      new Promise<'timeout'>((resolve) => {
-        setTimeout(() => resolve('timeout'), 200);
-      }),
+      timeoutPromise,
     ]);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
 
     expect(result).not.toBe('timeout');
     expect(result).toBe('rejected');

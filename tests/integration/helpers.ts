@@ -1,6 +1,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { expect } from 'vitest';
 import type { AutomationSpec } from '../../src/automation/schemas';
 import { createDefaultApprovalPolicy } from '../../src/policy/defaults';
 import { DefaultPolicyEngine } from '../../src/policy/engine';

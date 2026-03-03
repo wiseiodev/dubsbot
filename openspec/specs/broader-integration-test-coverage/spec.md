@@ -1,7 +1,7 @@
 # broader-integration-test-coverage Specification
 
 ## Purpose
-TBD - created by archiving change broader-integration-tests. Update Purpose after archive.
+Define required integration coverage breadth for core command flows, automation lifecycle behavior, policy and approval branches, and daemon/watcher loop lifecycles so realistic end-to-end behavior remains continuously validated.
 ## Requirements
 ### Requirement: Command Flow Integration Coverage
 The test suite MUST include integration scenarios that exercise `chat`, `plan`, and `index` command flows through their real orchestration paths, including success and failure branches.
@@ -54,4 +54,3 @@ The test suite MUST verify daemon and watcher loop lifecycle behavior, including
 #### Scenario: Watcher termination on fatal loop error
 - **WHEN** the watcher loop encounters a configured fatal error condition
 - **THEN** it SHALL terminate the loop and expose the fatal error outcome without deadlock
-
