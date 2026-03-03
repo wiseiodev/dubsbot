@@ -1,7 +1,7 @@
 # scoped-persisted-approvals Specification
 
 ## Purpose
-TBD - created by archiving change stronger-safety-model. Update Purpose after archive.
+Define scope constraints, expiration, and revocation requirements for persisted approvals so prior approvals are reused only when all scoped conditions match.
 ## Requirements
 ### Requirement: Persisted approvals SHALL be scope-bound
 The system SHALL persist approvals with explicit scope keys including principal identity, operation class, resource scope, and expiration metadata. A persisted approval MUST only be reusable when all scope keys match the current request.
@@ -24,4 +24,3 @@ The system SHALL enforce expiration on persisted approvals and MUST support expl
 #### Scenario: Revoked approval is not reused
 - **WHEN** an approval has been revoked for the matching scope
 - **THEN** the system SHALL NOT apply it to subsequent requests
-

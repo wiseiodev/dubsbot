@@ -62,7 +62,7 @@ describe('DefaultPolicyEngine', () => {
       approvalGranted: true,
     });
     expect(approved.allowed).toBe(true);
-    expect(approved.reasonCodes).toContain(PolicyReasonCode.approvalScopeReused);
+    expect(approved.reasonCodes).toContain(PolicyReasonCode.approvalScopeGranted);
 
     const reused = engine.evaluateCommand({
       command,
@@ -162,7 +162,10 @@ describe('DefaultPolicyEngine', () => {
     const denied = join(workspace, 'denied');
     await mkdir(allowed, { recursive: true });
     await mkdir(denied, { recursive: true });
-    await symlink(allowed, join(workspace, 'allowed-link')).catch(() => undefined);
+    const allowedLink = join(workspace, 'allowed-link');
+    const symlinkCreated = await symlink(allowed, allowedLink)
+      .then(() => true)
+      .catch(() => false);
 
     const engine = new DefaultPolicyEngine(
       createDefaultApprovalPolicy({
@@ -174,13 +177,24 @@ describe('DefaultPolicyEngine', () => {
     );
 
     const inAllowlist = engine.evaluateCommand({
-      command: `echo hi > ${join(workspace, 'allowed-link', 'file.txt')}`,
+      command: `echo hi > ${join(allowed, 'file.txt')}`,
       cwd: workspace,
       mode: 'automation',
       sideEffect: 'write',
     });
     expect(inAllowlist.allowed).toBe(true);
     expect(inAllowlist.reasonCodes).toContain(PolicyReasonCode.pathAllowlistMatch);
+
+    if (symlinkCreated) {
+      const viaSymlink = engine.evaluateCommand({
+        command: `echo hi > ${join(allowedLink, 'file.txt')}`,
+        cwd: workspace,
+        mode: 'automation',
+        sideEffect: 'write',
+      });
+      expect(viaSymlink.allowed).toBe(true);
+      expect(viaSymlink.reasonCodes).toContain(PolicyReasonCode.pathAllowlistMatch);
+    }
 
     const outOfAllowlist = engine.evaluateCommand({
       command: `echo hi > ${join(denied, 'file.txt')}`,
@@ -246,5 +260,26 @@ describe('DefaultPolicyEngine', () => {
     });
     expect(decision.allowed).toBe(false);
     expect(decision.reasonCodes).toContain(PolicyReasonCode.canonicalizationFailure);
+  });
+
+  it('returns explicit reason when guarded command has no target paths', () => {
+    const engine = new DefaultPolicyEngine(
+      createDefaultApprovalPolicy({
+        pathAllowlistByOperation: {
+          write: ['/repo'],
+        },
+      })
+    );
+
+    const decision = engine.evaluateCommand({
+      command: 'echo hi',
+      cwd: '/repo',
+      mode: 'automation',
+      sideEffect: 'write',
+    });
+
+    expect(decision.allowed).toBe(false);
+    expect(decision.requiresApproval).toBe(false);
+    expect(decision.reasonCodes).toContain(PolicyReasonCode.missingTargetPaths);
   });
 });

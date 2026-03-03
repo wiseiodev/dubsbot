@@ -1,7 +1,7 @@
 # path-allowlist-enforcement Specification
 
 ## Purpose
-TBD - created by archiving change stronger-safety-model. Update Purpose after archive.
+Define canonical path-allowlist enforcement behavior for guarded file mutations and sensitive commands, including deny-by-default handling for missing or invalid policy inputs.
 ## Requirements
 ### Requirement: Guarded operations MUST enforce canonical path allowlists
 For every guarded file-system mutation or sensitive command operation that uses allowlist policy (including automation safe-write policy), the system MUST resolve target paths to canonical absolute paths before evaluating allowlists. The operation SHALL proceed only if every target path is contained within an allowed root for that operation.
@@ -28,4 +28,3 @@ The system SHALL deny guarded operations when allowlist policy is configured but
 #### Scenario: Canonicalization failure denies operation
 - **WHEN** target path canonicalization fails for any requested path
 - **THEN** the system denies the operation and reports canonicalization-failure reason
-

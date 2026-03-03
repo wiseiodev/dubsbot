@@ -117,7 +117,7 @@ export class DefaultPolicyEngine {
         decision: 'allow',
         reason: 'Approved and persisted for matching scope',
         reasonCodes: [
-          PolicyReasonCode.approvalScopeReused,
+          PolicyReasonCode.approvalScopeGranted,
           ...(pathGuardResult.enforced ? [PolicyReasonCode.pathAllowlistMatch] : []),
         ],
         matchedRules: ['approval:granted-and-persisted'],
@@ -239,7 +239,7 @@ export class DefaultPolicyEngine {
           scopeContext,
           decision: 'deny',
           reason: 'Allowlist policy requires explicit target paths for guarded operation',
-          reasonCodes: [PolicyReasonCode.missingAllowlist],
+          reasonCodes: [PolicyReasonCode.missingTargetPaths],
           matchedRules: ['path-allowlist:no-target-paths'],
         }),
         enforced: true,

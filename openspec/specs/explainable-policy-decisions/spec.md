@@ -1,7 +1,7 @@
 # explainable-policy-decisions Specification
 
 ## Purpose
-TBD - created by archiving change stronger-safety-model. Update Purpose after archive.
+Define requirements for deterministic, structured, and user-interpretable policy decision explanations across allow, deny, and approval-required outcomes.
 ## Requirements
 ### Requirement: Policy decisions SHALL include structured explanations
 Each policy evaluation result SHALL include a structured explanation envelope containing decision outcome, matched rule identifiers, scope context, and standardized reason codes.
@@ -20,4 +20,3 @@ Given identical policy inputs, context, and configuration state, the system MUST
 #### Scenario: Repeated identical request yields same explanation
 - **WHEN** the same request is evaluated repeatedly without any policy or context changes
 - **THEN** each evaluation returns identical decision outcome and explanation payload fields
-

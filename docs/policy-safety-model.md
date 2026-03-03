@@ -7,18 +7,21 @@ This guide explains how to interpret policy denials and adjust scoped approvals 
 Policy outcomes now include:
 - `decision`: `allow`, `deny`, or `approval_required`
 - `matchedRules`: stable identifiers for matched policy checks
-- `scopeContext`: approval scope tuple (`principal`, `operationClass`, `resourceScope`, `scopeId`)
+- `scopeContext`: approval scope tuple (`principal`, `operationClass`, `resourceScope`, `scopeId`) plus optional lifecycle fields (`expiresAt`, `revoked`)
 - `reasonCodes`: normalized denial/approval reasons
 
 Legacy fields (`allowed`, `requiresApproval`, `reason`, `sideEffect`) remain available for compatibility.
+When present in `scopeContext`, `expiresAt` is the ISO-8601 expiration timestamp for a persisted scope and `revoked` indicates that scope cannot be reused.
 
 ## Actionable Reason Codes
 
 - `approval_required_side_effect`: interactive approval is required for the operation class.
+- `approval_scope_granted`: interactive approval was granted and persisted for the exact scope.
 - `approval_scope_reused`: an existing scoped approval matched exactly and was reused.
 - `approval_expired`: the prior scoped approval has expired and must be re-approved.
 - `approval_revoked`: the scope was explicitly revoked and cannot be reused.
 - `missing_allowlist`: allowlist policy is active but no valid allowlist exists for this operation.
+- `missing_target_paths`: guarded command did not provide explicit target paths for allowlist evaluation.
 - `path_out_of_allowlist`: at least one canonicalized path is outside allowed roots.
 - `path_canonicalization_failure`: canonicalization failed for a configured root or target path.
 - `blocked_command_pattern`: command matched a hard-block pattern.
