@@ -8,7 +8,11 @@ async function main(): Promise<void> {
 
 main().catch((error) => {
   if (error instanceof Error) {
-    console.error(`Error: ${error.message}`);
+    if (error.message.includes('Chat preflight failed.')) {
+      console.error(`Error: ${error.message}`);
+    } else {
+      console.error(`Error: ${error.stack ?? error.message}`);
+    }
   } else {
     console.error(`Error: ${String(error)}`);
   }

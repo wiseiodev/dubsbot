@@ -143,7 +143,7 @@ export function ChatApp({ orchestrator, tools, traces }: AppProps) {
 
         if (approvalOutcome !== 'approved') {
           assistantMessage += `\nSkipped ${invocation.tool} (${approvalOutcome}).`;
-          if (!(await transitionPhase('planning'))) {
+          if (!(await transitionPhase('executing'))) {
             setOutput('Error: invalid lifecycle transition after denied approval.');
             return;
           }
@@ -316,7 +316,9 @@ export function ChatApp({ orchestrator, tools, traces }: AppProps) {
 
     if (key.ctrl && input === 'c') {
       if (busy) {
-        void lifecycleRef.current.requestInterrupt();
+        void lifecycleRef.current.requestInterrupt().catch(() => {
+          // Ignore trace/write errors while processing Ctrl+C.
+        });
         setLastStatus('Interrupt requested. Waiting for next safe checkpoint...');
         return;
       }

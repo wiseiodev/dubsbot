@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  canTransitionPhase,
   getPendingToolIndexes,
   InteractiveLoopLifecycle,
   LoopCheckpointStore,
@@ -61,6 +62,10 @@ describe('interactive loop approval behavior', () => {
     expect(resolveApprovalOutcome('/deny')).toBe('denied');
     expect(resolveApprovalOutcome('/dismiss')).toBe('dismissed');
     expect(resolveApprovalOutcome('invalid')).toBeNull();
+  });
+
+  it('allows denied or dismissed approval flow to return to executing', () => {
+    expect(canTransitionPhase('awaiting_approval', 'executing')).toBe(true);
   });
 });
 

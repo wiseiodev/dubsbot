@@ -1,7 +1,7 @@
 # interactive-loop-lifecycle Specification
 
 ## Purpose
-TBD - created by archiving change rich-interactive-cli-loop-ux. Update Purpose after archive.
+Define canonical interactive loop phases and transition rules so session state is consistently tracked, visibly rendered in the TUI, and guarded against invalid lifecycle moves.
 ## Requirements
 ### Requirement: Loop phase visibility
 The system SHALL maintain and expose a canonical lifecycle phase for each interactive loop session and render the current phase in the TUI.
@@ -20,4 +20,3 @@ The system SHALL enforce valid lifecycle transitions and reject invalid transiti
 #### Scenario: Invalid transition is blocked
 - **WHEN** a transition request attempts to move from `completed` back to `executing` in the same session
 - **THEN** the system rejects the transition and records an invalid transition error event
-

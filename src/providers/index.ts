@@ -1,5 +1,6 @@
 import { AnthropicAdapter } from './anthropic';
 import { GoogleAdapter } from './google';
+import { getGoogleApiKey } from './google-env';
 import { OpenAIAdapter } from './openai';
 import type { ProviderAdapter } from './types';
 
@@ -24,10 +25,6 @@ export function detectProvider(): ProviderName {
     return preferred;
   }
   return 'google';
-}
-
-export function getGoogleApiKey(): string | undefined {
-  return process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY;
 }
 
 export function getProviderPreflightError(provider: ProviderName): string | null {

@@ -147,8 +147,11 @@ export class LoopCheckpointStore {
   }
 
   async save(checkpoint: LoopCheckpoint): Promise<void> {
-    await mkdir(dirname(this.path), { recursive: true });
-    await writeFile(this.path, JSON.stringify(checkpoint, null, 2), 'utf8');
+    await mkdir(dirname(this.path), { recursive: true, mode: 0o700 });
+    await writeFile(this.path, JSON.stringify(checkpoint, null, 2), {
+      encoding: 'utf8',
+      mode: 0o600,
+    });
   }
 
   async load(): Promise<LoopCheckpoint | null> {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AgentTurnEnvelopeSchema } from '../src/agent/schemas/turn';
+import { ContextQuerySchema } from '../src/context/schemas';
 
 describe('AgentTurnEnvelopeSchema', () => {
   it('rejects invalid assistant responses', () => {
@@ -14,5 +15,20 @@ describe('AgentTurnEnvelopeSchema', () => {
     });
 
     expect(parsed.success).toBe(false);
+  });
+
+  it('normalizes partial rerank input using defaults', () => {
+    const parsed = ContextQuerySchema.parse({
+      lexicalQuery: 'hello',
+      vectorQuery: 'hello',
+      graphHints: [],
+      rerank: {},
+      maxItems: 5,
+    });
+
+    expect(parsed.rerank).toEqual({
+      method: 'hybrid',
+      topK: 20,
+    });
   });
 });

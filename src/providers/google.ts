@@ -1,6 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { embed, generateText, Output, streamText } from 'ai';
-import { getGoogleApiKey } from './index';
+import { getGoogleApiKey } from './google-env';
 import type {
   EmbedInput,
   GenerateStructuredInput,

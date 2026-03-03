@@ -1,7 +1,7 @@
 # interactive-loop-interrupt-resume Specification
 
 ## Purpose
-TBD - created by archiving change rich-interactive-cli-loop-ux. Update Purpose after archive.
+Define safe interrupt and resume behavior for interactive loop sessions so users can pause at checkpoints and continue without corrupting state or replaying completed steps.
 ## Requirements
 ### Requirement: Controlled interrupt handling
 The system SHALL treat user interrupts as controlled lifecycle transitions and preserve session integrity.
@@ -16,4 +16,3 @@ The system SHALL persist checkpoint state so an interrupted session can resume f
 #### Scenario: Resume continues from checkpoint
 - **WHEN** a user selects resume after an interrupted session
 - **THEN** the system restores the saved checkpoint and transitions through `resuming` to `executing` without replaying completed steps
-

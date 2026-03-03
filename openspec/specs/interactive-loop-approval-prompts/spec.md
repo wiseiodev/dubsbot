@@ -1,7 +1,7 @@
 # interactive-loop-approval-prompts Specification
 
 ## Purpose
-TBD - created by archiving change rich-interactive-cli-loop-ux. Update Purpose after archive.
+Define explicit approval requirements for sensitive interactive loop actions so mutating or destructive operations only run after clear in-TUI user confirmation.
 ## Requirements
 ### Requirement: Explicit approval for sensitive actions
 The system SHALL require explicit in-TUI user approval before executing mutating or destructive actions.
@@ -16,4 +16,3 @@ The system SHALL prevent execution of a sensitive action when approval is denied
 #### Scenario: Approval denied skips action
 - **WHEN** a sensitive action prompt is denied by the user
 - **THEN** the action is skipped, the loop remains active, and a denial event is recorded
-

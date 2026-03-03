@@ -5,12 +5,26 @@ export const ContextQuerySchema = z.object({
   vectorQuery: z.string().default(''),
   graphHints: z.array(z.string()).default([]),
   // Keep nested rerank fields explicitly required for provider JSON-schema compatibility.
-  rerank: z
-    .object({
+  rerank: z.preprocess(
+    (value) => {
+      if (value == null) {
+        return { method: 'hybrid', topK: 20 };
+      }
+      if (typeof value !== 'object') {
+        return value;
+      }
+
+      const input = value as { method?: unknown; topK?: unknown };
+      return {
+        method: input.method ?? 'hybrid',
+        topK: input.topK ?? 20,
+      };
+    },
+    z.object({
       method: z.enum(['none', 'hybrid']),
       topK: z.number().int().positive(),
     })
-    .default({ method: 'hybrid', topK: 20 }),
+  ),
   maxItems: z.number().int().positive().default(20),
 });
 
