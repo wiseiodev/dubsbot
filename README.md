@@ -1,0 +1,86 @@
+# Dubsbot
+
+Model-agnostic local coding agent CLI inspired by Claude Code, built with TypeScript and powered by Vercel AI SDK.
+
+## Highlights
+
+- Local-first agent loop (`gather -> reason -> act -> verify`)
+- Structured outputs with strict Zod validation
+- Provider adapters for OpenAI, Anthropic, and Google
+- Approval-gated execution policy for safer command/tool actions
+- PGLite-backed local persistence for sessions, tools, retrieval metadata, and context indexing
+- Hybrid context retrieval (lexical + vector + graph-scored ranking)
+- Optional daemon for automations and file/git watch re-indexing
+- Extensible command/hook model via `AGENTS.md`
+
+## Requirements
+
+- Node.js 22+
+- pnpm 10+
+
+## Quick Start
+
+```bash
+pnpm install
+pnpm db:migrate
+pnpm build
+```
+
+## CLI Commands
+
+```bash
+pnpm dev -- chat
+pnpm dev -- chat "summarize this repo"
+pnpm dev -- plan "create a rollout plan for indexing"
+pnpm dev -- index .
+pnpm dev -- automations list
+pnpm dev -- automations add --name "Hourly Check" --cron "0 * * * *" --prompt "summarize local status"
+pnpm dev -- automations run
+```
+
+Run daemon:
+
+```bash
+pnpm dev:daemon
+```
+
+## Quality Commands
+
+```bash
+pnpm lint
+pnpm lint:fix
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+## Project Layout
+
+- `src/cli` - Ink TUI and command entrypoints
+- `src/agent` - orchestrator and turn schemas
+- `src/providers` - AI SDK provider adapters
+- `src/policy` - approval and safety policy logic
+- `src/context` - indexing, retrieval, file/git watchers
+- `src/db` - PGLite client and migrations
+- `src/automation` - scheduler, hooks, automation runner
+- `src/observability` - traces/transcripts and optional OTel
+- `src/mcp` - MCP process client
+- `tests` - unit/integration-facing tests for core behavior
+
+## Configuration
+
+Environment variables (BYOK):
+
+- `DUBSBOT_PROVIDER` (`openai` | `anthropic` | `google`)
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `GOOGLE_API_KEY`
+- `DUBSBOT_OPENAI_MODEL`
+- `DUBSBOT_ANTHROPIC_MODEL`
+- `DUBSBOT_GOOGLE_MODEL`
+- `DUBSBOT_OTEL_ENABLED=1` to enable telemetry export hooks
+
+## Notes
+
+- Anthropic embeddings currently fall back to deterministic local vectors.
+- This project intentionally uses Biome only (no ESLint/Prettier).
