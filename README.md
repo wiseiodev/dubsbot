@@ -15,7 +15,7 @@ Model-agnostic local coding agent CLI inspired by Claude Code, built with TypeSc
 
 ## Requirements
 
-- Node.js 22+
+- Node.js 24+
 - pnpm 10+
 
 ## Quick Start
@@ -44,6 +44,16 @@ Run daemon:
 pnpm dev:daemon
 ```
 
+## Interactive Loop UX
+
+- The interactive chat loop now exposes lifecycle phases in the TUI: `initializing`, `planning`, `awaiting_approval`, `executing`, `interrupted`, `resuming`, `completed`, `failed`.
+- Press `Ctrl+C` during active execution to request a controlled interrupt. The loop stops at the next safe checkpoint and saves resumable state.
+- Use `/resume` to continue an interrupted turn from the last durable checkpoint.
+- Sensitive tool actions (`write` and `destructive`) require an explicit in-TUI decision:
+  - `/approve` to execute
+  - `/deny` to skip
+  - `/dismiss` to skip
+
 ## Quality Commands
 
 ```bash
@@ -71,13 +81,13 @@ pnpm build
 
 Environment variables (BYOK):
 
-- `DUBSBOT_PROVIDER` (`openai` | `anthropic` | `google`)
+- `DUBSBOT_PROVIDER` (`openai` | `anthropic` | `google`) - defaults to `google`
 - `OPENAI_API_KEY`
 - `ANTHROPIC_API_KEY`
-- `GOOGLE_API_KEY`
+- `GOOGLE_GENERATIVE_AI_API_KEY`
 - `DUBSBOT_OPENAI_MODEL`
 - `DUBSBOT_ANTHROPIC_MODEL`
-- `DUBSBOT_GOOGLE_MODEL`
+- `DUBSBOT_GOOGLE_MODEL` (defaults to `gemini-3.1-pro-preview`)
 - `DUBSBOT_OTEL_ENABLED=1` to enable telemetry export hooks
 
 ## Notes

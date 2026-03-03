@@ -1,5 +1,6 @@
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { embed, generateText, Output, streamText } from 'ai';
+import { getGoogleApiKey } from './index';
 import type {
   EmbedInput,
   GenerateStructuredInput,
@@ -10,10 +11,17 @@ import type {
 
 export class GoogleAdapter implements ProviderAdapter {
   constructor(
-    private readonly defaultModel = process.env.DUBSBOT_GOOGLE_MODEL ?? 'gemini-2.5-flash'
+    private readonly defaultModel = process.env.DUBSBOT_GOOGLE_MODEL ?? 'gemini-3.1-pro-preview'
   ) {}
 
+  private getProvider() {
+    return createGoogleGenerativeAI({
+      apiKey: getGoogleApiKey(),
+    });
+  }
+
   async generateStructured<T>(input: GenerateStructuredInput<T>): Promise<T> {
+    const google = this.getProvider();
     const result = await generateText({
       model: google(input.model || this.defaultModel),
       output: Output.object({
@@ -28,6 +36,7 @@ export class GoogleAdapter implements ProviderAdapter {
   }
 
   async *streamStructured<T>(input: StreamStructuredInput<T>): AsyncIterable<T> {
+    const google = this.getProvider();
     const result = streamText({
       model: google(input.model || this.defaultModel),
       output: Output.object({
@@ -46,6 +55,7 @@ export class GoogleAdapter implements ProviderAdapter {
   }
 
   async embed(input: EmbedInput): Promise<number[][]> {
+    const google = this.getProvider();
     const vectors: number[][] = [];
     for (const value of input.values) {
       const result = await embed({

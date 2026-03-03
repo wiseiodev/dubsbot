@@ -19,9 +19,29 @@ export function createProviderAdapter(provider: ProviderName): ProviderAdapter {
 }
 
 export function detectProvider(): ProviderName {
-  const preferred = (process.env.DUBSBOT_PROVIDER || 'openai').toLowerCase();
+  const preferred = (process.env.DUBSBOT_PROVIDER || 'google').toLowerCase();
   if (preferred === 'anthropic' || preferred === 'google' || preferred === 'openai') {
     return preferred;
   }
-  return 'openai';
+  return 'google';
+}
+
+export function getGoogleApiKey(): string | undefined {
+  return process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY;
+}
+
+export function getProviderPreflightError(provider: ProviderName): string | null {
+  if (provider === 'openai' && !process.env.OPENAI_API_KEY) {
+    return 'Missing OPENAI_API_KEY for provider=openai.';
+  }
+
+  if (provider === 'anthropic' && !process.env.ANTHROPIC_API_KEY) {
+    return 'Missing ANTHROPIC_API_KEY for provider=anthropic.';
+  }
+
+  if (provider === 'google' && !getGoogleApiKey()) {
+    return 'Missing GOOGLE_GENERATIVE_AI_API_KEY for provider=google.';
+  }
+
+  return null;
 }

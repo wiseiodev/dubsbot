@@ -7,6 +7,7 @@ This file defines local agent commands and hooks used by Dubsbot.
 - typecheck: pnpm typecheck
 - lint: pnpm lint
 - build: pnpm build
+- checks: pnpm checks
 - migrate: pnpm db:migrate
 - chat: pnpm dev -- chat
 - index: pnpm dev -- index .
@@ -27,3 +28,4 @@ This file defines local agent commands and hooks used by Dubsbot.
 - Use `pnpm` for dependency changes.
 - Keep imports extensionless in TypeScript source.
 - Enforce style via Biome (`single quotes`, `2-space indent`).
+- Before considering any task complete, run `pnpm checks` and ensure it passes.

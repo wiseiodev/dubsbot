@@ -4,10 +4,11 @@ export const ContextQuerySchema = z.object({
   lexicalQuery: z.string().default(''),
   vectorQuery: z.string().default(''),
   graphHints: z.array(z.string()).default([]),
+  // Keep nested rerank fields explicitly required for provider JSON-schema compatibility.
   rerank: z
     .object({
-      method: z.enum(['none', 'hybrid']).default('hybrid'),
-      topK: z.number().int().positive().default(20),
+      method: z.enum(['none', 'hybrid']),
+      topK: z.number().int().positive(),
     })
     .default({ method: 'hybrid', topK: 20 }),
   maxItems: z.number().int().positive().default(20),

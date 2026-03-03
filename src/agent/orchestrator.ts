@@ -3,7 +3,7 @@ import type { DefaultPolicyEngine } from '../policy/engine';
 import type { ProviderAdapter } from '../providers/types';
 import { buildRepairPrompt } from './repair';
 import { type AgentTurnEnvelope, AgentTurnEnvelopeSchema } from './schemas/turn';
-import { createInitialState } from './state';
+import { type AgentRuntimeState, appendTurnToState, createInitialState } from './state';
 
 export type RunTurnInput = {
   userMessage: string;
@@ -20,6 +20,7 @@ export type RunTurnResult = AgentTurnEnvelope & {
 
 export class AgentOrchestrator {
   private readonly maxValidationRetries: number;
+  private readonly sessionStates = new Map<string, AgentRuntimeState>();
 
   constructor(
     private readonly deps: {
@@ -33,13 +34,9 @@ export class AgentOrchestrator {
   }
 
   async runTurn(input: RunTurnInput): Promise<RunTurnResult> {
-    const state = createInitialState({
-      sessionId: input.sessionId,
-      mode: input.mode,
-      userMessage: input.userMessage,
-    });
+    const state = this.getSessionState(input);
 
-    let prompt = this.buildPrompt(state);
+    let prompt = this.buildPrompt(state, input.userMessage);
     let attempt = 0;
     let lastError: unknown;
 
@@ -47,7 +44,7 @@ export class AgentOrchestrator {
       attempt += 1;
       try {
         const response = await this.deps.provider.generateStructured({
-          model: this.deps.model ?? 'default',
+          model: this.deps.model,
           schema: AgentTurnEnvelopeSchema as z.ZodType<AgentTurnEnvelope>,
           prompt,
           system:
@@ -56,6 +53,13 @@ export class AgentOrchestrator {
 
         const envelope = AgentTurnEnvelopeSchema.parse(response);
         this.enforcePolicy(envelope, input.mode);
+        this.sessionStates.set(
+          input.sessionId,
+          appendTurnToState(state, {
+            userMessage: input.userMessage,
+            assistantMessage: envelope.assistantResponse.message,
+          })
+        );
 
         return {
           ...envelope,
@@ -82,17 +86,38 @@ export class AgentOrchestrator {
     );
   }
 
-  private buildPrompt(state: {
-    sessionId: string;
-    turns: number;
-    lastUserMessage: string;
-  }): string {
+  private buildPrompt(
+    state: {
+      sessionId: string;
+      turns: number;
+      history: { role: 'user' | 'assistant'; text: string }[];
+    },
+    currentUserMessage: string
+  ): string {
+    const historyLines = state.history.map((message) => `${message.role}: ${message.text}`);
     return [
       `Session: ${state.sessionId}`,
       `Turn: ${state.turns + 1}`,
-      `User message: ${state.lastUserMessage}`,
+      historyLines.length > 0 ? `Conversation history:\n${historyLines.join('\n')}` : '',
+      `User message: ${currentUserMessage}`,
       'Plan safely, request approvals for mutating operations, and produce a useful assistant response.',
-    ].join('\n');
+    ]
+      .filter((line) => line.length > 0)
+      .join('\n');
+  }
+
+  private getSessionState(input: RunTurnInput): AgentRuntimeState {
+    const existing = this.sessionStates.get(input.sessionId);
+    if (existing) {
+      return existing;
+    }
+
+    const initial = createInitialState({
+      sessionId: input.sessionId,
+      mode: input.mode,
+    });
+    this.sessionStates.set(input.sessionId, initial);
+    return initial;
   }
 
   private enforcePolicy(envelope: AgentTurnEnvelope, mode: 'interactive' | 'automation'): void {

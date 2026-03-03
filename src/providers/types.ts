@@ -3,7 +3,7 @@ import type { z } from 'zod';
 export type ProviderCapability = 'structured-output' | 'streaming' | 'embeddings' | 'tool-calling';
 
 export type GenerateStructuredInput<T> = {
-  model: string;
+  model?: string;
   schema: z.ZodType<T>;
   prompt: string;
   system?: string;

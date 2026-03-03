@@ -7,6 +7,10 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error(error);
+  if (error instanceof Error) {
+    console.error(`Error: ${error.message}`);
+  } else {
+    console.error(`Error: ${String(error)}`);
+  }
   process.exit(1);
 });
