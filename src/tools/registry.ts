@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { AgentsConfig } from '../config/agents-loader';
 import type { DefaultPolicyEngine } from '../policy/engine';
-import type { ApprovalDecision } from '../policy/schemas';
+import { type ApprovalDecision, toLegacyApprovalDecision } from '../policy/schemas';
 import { classifyCommandSideEffect, executeCommand } from './exec-command';
 import { ToolInvocationSchema, type ToolResult } from './schemas';
 
@@ -29,18 +29,29 @@ export type ToolRegistryOptions = {
   onWarning?: (message: string) => void;
 };
 
-const SIDE_EFFECT_RANK: Record<ToolHandlerContext['sideEffect'], number> = {
-  read: 0,
-  write: 1,
-  network: 2,
-  destructive: 3,
-};
-
-function resolveConservativeSideEffect(
-  declared: ToolHandlerContext['sideEffect'],
-  inferred: ToolHandlerContext['sideEffect']
-): ToolHandlerContext['sideEffect'] {
-  return SIDE_EFFECT_RANK[declared] >= SIDE_EFFECT_RANK[inferred] ? declared : inferred;
+function buildDefaultAllowDecision(input: {
+  sideEffect: ToolHandlerContext['sideEffect'];
+  mode: ToolHandlerContext['mode'];
+  cwd: string;
+  command: string;
+}): ApprovalDecision {
+  return {
+    allowed: true,
+    requiresApproval: false,
+    reason: 'Policy engine unavailable',
+    sideEffect: input.sideEffect,
+    decision: 'allow',
+    matchedRules: [],
+    scopeContext: {
+      principal: input.mode === 'automation' ? 'automation-runner' : 'interactive-user',
+      operationClass: input.sideEffect,
+      resourceScope: `${input.cwd}::${input.command}`,
+      scopeId: 'policy-engine-unavailable',
+      expiresAt: null,
+      revoked: false,
+    },
+    reasonCodes: [],
+  };
 }
 
 function deniedResult(input: {
@@ -58,6 +69,7 @@ function deniedResult(input: {
       actionName: input.actionName ?? input.tool,
       resolvedCommand: input.resolvedCommand,
       policyOutcome: input.decision,
+      policyOutcomeLegacy: toLegacyApprovalDecision(input.decision),
       executionSummary: input.summary,
     },
     stdout: '',
@@ -79,17 +91,13 @@ export class ToolRegistry {
       const command = z.string().parse(params.command);
       const cwd = z.string().default(process.cwd()).parse(params.cwd);
       const timeoutMs = z.number().int().positive().optional().parse(params.timeoutMs);
-      const inferredSideEffect = classifyCommandSideEffect(command);
-      const effectiveSideEffect = resolveConservativeSideEffect(
-        context.sideEffect,
-        inferredSideEffect
-      );
 
       const decision = this.evaluatePolicy({
         command,
         cwd,
         mode: context.mode,
-        sideEffect: effectiveSideEffect,
+        sideEffect: context.sideEffect,
+        approvalGranted: context.approvalGranted,
       });
       if (decision && !decision.allowed && !decision.requiresApproval) {
         return deniedResult({
@@ -114,18 +122,20 @@ export class ToolRegistry {
         timeoutMs,
         toolName: context.invocationTool,
       });
+      const effectiveDecision =
+        decision ??
+        buildDefaultAllowDecision({
+          sideEffect: context.sideEffect,
+          mode: context.mode,
+          cwd,
+          command,
+        });
       return {
         ...result,
         payload: {
           ...result.payload,
-          policyOutcome:
-            decision ??
-            ({
-              allowed: true,
-              requiresApproval: false,
-              reason: 'Policy engine unavailable',
-              sideEffect: effectiveSideEffect,
-            } satisfies ApprovalDecision),
+          policyOutcome: effectiveDecision,
+          policyOutcomeLegacy: toLegacyApprovalDecision(effectiveDecision),
           executionSummary: result.summary,
         },
       };
@@ -203,6 +213,7 @@ export class ToolRegistry {
         cwd,
         mode: context.mode,
         sideEffect: inferredSideEffect,
+        approvalGranted: context.approvalGranted,
       });
 
       if (decision && !decision.allowed && !decision.requiresApproval) {
@@ -231,6 +242,14 @@ export class ToolRegistry {
         timeoutMs,
         toolName: context.invocationTool,
       });
+      const effectiveDecision =
+        decision ??
+        buildDefaultAllowDecision({
+          sideEffect: inferredSideEffect,
+          mode: context.mode,
+          cwd,
+          command: resolvedCommand,
+        });
 
       return {
         ...result,
@@ -238,14 +257,8 @@ export class ToolRegistry {
           ...result.payload,
           actionName: name,
           resolvedCommand,
-          policyOutcome:
-            decision ??
-            ({
-              allowed: true,
-              requiresApproval: false,
-              reason: 'Policy engine unavailable',
-              sideEffect: inferredSideEffect,
-            } satisfies ApprovalDecision),
+          policyOutcome: effectiveDecision,
+          policyOutcomeLegacy: toLegacyApprovalDecision(effectiveDecision),
           executionSummary: result.summary,
         },
       };
@@ -279,6 +292,7 @@ export class ToolRegistry {
     cwd: string;
     mode: 'interactive' | 'automation';
     sideEffect: 'read' | 'write' | 'destructive' | 'network';
+    approvalGranted?: boolean;
   }): ApprovalDecision | null {
     if (!this.policyEngine) {
       return null;
@@ -288,6 +302,8 @@ export class ToolRegistry {
       cwd: input.cwd,
       mode: input.mode,
       sideEffect: input.sideEffect,
+      approvalGranted: input.approvalGranted,
+      principal: input.mode === 'automation' ? 'automation-runner' : 'interactive-user',
     });
   }
 }
