@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
 import { createDefaultApprovalPolicy } from '../src/policy/defaults';
 import { DefaultPolicyEngine } from '../src/policy/engine';
 import { ToolRegistry } from '../src/tools/registry';
@@ -70,30 +73,88 @@ describe('ToolRegistry AGENTS runtime actions', () => {
   });
 
   it('allows automation write execution when command matches allowlist', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'dubsbot-tool-registry-'));
+    try {
+      const registry = new ToolRegistry({
+        policyEngine: new DefaultPolicyEngine(
+          createDefaultApprovalPolicy({
+            automationWriteAllowlist: ['echo hi > ./tmp.txt'],
+          })
+        ),
+        defaultMode: 'automation',
+        agentsConfig: {
+          commands: [{ name: 'fix', command: 'echo hi > ./tmp.txt' }],
+          hooks: [],
+          warnings: [],
+        },
+      });
+
+      const result = await registry.invoke({
+        tool: 'agents:fix',
+        sideEffect: 'read',
+        params: { cwd },
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.payload.policyOutcome).toMatchObject({
+        allowed: true,
+        requiresApproval: false,
+        sideEffect: 'write',
+      });
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('passes invocation cwd into policy evaluation', async () => {
+    const cwd = '/tmp/custom-workdir';
+    const evaluateCommand = vi.fn().mockReturnValue({
+      allowed: false,
+      requiresApproval: true,
+      reason: 'Approval required for side effect: write',
+      sideEffect: 'write',
+    });
     const registry = new ToolRegistry({
-      policyEngine: new DefaultPolicyEngine(
-        createDefaultApprovalPolicy({
-          automationWriteAllowlist: ['echo hi > tmp.txt'],
-        })
-      ),
+      policyEngine: { evaluateCommand } as unknown as DefaultPolicyEngine,
       defaultMode: 'automation',
       agentsConfig: {
-        commands: [{ name: 'fix', command: 'echo hi > tmp.txt' }],
+        commands: [{ name: 'fix', command: 'echo hi > ./tmp.txt' }],
         hooks: [],
         warnings: [],
       },
     });
 
-    const result = await registry.invoke({
+    await registry.invoke({
       tool: 'agents:fix',
       sideEffect: 'read',
-      params: {},
+      params: { cwd },
     });
 
-    expect(result.ok).toBe(true);
+    expect(evaluateCommand).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cwd,
+      })
+    );
+  });
+
+  it('uses conservative side effect for exec-command policy checks', async () => {
+    const registry = new ToolRegistry({
+      policyEngine: new DefaultPolicyEngine(createDefaultApprovalPolicy()),
+      defaultMode: 'interactive',
+    });
+
+    const result = await registry.invoke({
+      tool: 'exec-command',
+      sideEffect: 'read',
+      params: {
+        command: 'echo hi > ./tmp.txt',
+      },
+    });
+
+    expect(result.ok).toBe(false);
     expect(result.payload.policyOutcome).toMatchObject({
-      allowed: true,
-      requiresApproval: false,
+      allowed: false,
+      requiresApproval: true,
       sideEffect: 'write',
     });
   });

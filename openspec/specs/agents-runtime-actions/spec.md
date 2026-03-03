@@ -1,7 +1,7 @@
 # agents-runtime-actions Specification
 
 ## Purpose
-TBD - created by archiving change agents-md-runtime-actions. Update Purpose after archive.
+Define how runtime discovers AGENTS commands from `AGENTS.md`, registers them as invokable actions, evaluates policy and approvals before execution, and emits structured deterministic execution outcomes.
 ## Requirements
 ### Requirement: Runtime SHALL Register AGENTS Commands as Invokable Actions
 The runtime SHALL load command entries from `AGENTS.md` and register each valid command as an invokable runtime action before agent execution begins.
@@ -46,4 +46,3 @@ The runtime SHALL return a deterministic error when an AGENTS command action ref
 #### Scenario: Duplicate command names in AGENTS definition
 - **WHEN** `AGENTS.md` defines duplicate command names
 - **THEN** runtime applies documented resolution behavior consistently and emits a structured warning
-

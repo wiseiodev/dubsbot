@@ -29,6 +29,20 @@ export type ToolRegistryOptions = {
   onWarning?: (message: string) => void;
 };
 
+const SIDE_EFFECT_RANK: Record<ToolHandlerContext['sideEffect'], number> = {
+  read: 0,
+  write: 1,
+  network: 2,
+  destructive: 3,
+};
+
+function resolveConservativeSideEffect(
+  declared: ToolHandlerContext['sideEffect'],
+  inferred: ToolHandlerContext['sideEffect']
+): ToolHandlerContext['sideEffect'] {
+  return SIDE_EFFECT_RANK[declared] >= SIDE_EFFECT_RANK[inferred] ? declared : inferred;
+}
+
 function deniedResult(input: {
   tool: string;
   actionName?: string;
@@ -65,11 +79,17 @@ export class ToolRegistry {
       const command = z.string().parse(params.command);
       const cwd = z.string().default(process.cwd()).parse(params.cwd);
       const timeoutMs = z.number().int().positive().optional().parse(params.timeoutMs);
+      const inferredSideEffect = classifyCommandSideEffect(command);
+      const effectiveSideEffect = resolveConservativeSideEffect(
+        context.sideEffect,
+        inferredSideEffect
+      );
 
       const decision = this.evaluatePolicy({
         command,
+        cwd,
         mode: context.mode,
-        sideEffect: context.sideEffect,
+        sideEffect: effectiveSideEffect,
       });
       if (decision && !decision.allowed && !decision.requiresApproval) {
         return deniedResult({
@@ -104,7 +124,7 @@ export class ToolRegistry {
               allowed: true,
               requiresApproval: false,
               reason: 'Policy engine unavailable',
-              sideEffect: context.sideEffect,
+              sideEffect: effectiveSideEffect,
             } satisfies ApprovalDecision),
           executionSummary: result.summary,
         },
@@ -180,6 +200,7 @@ export class ToolRegistry {
       const inferredSideEffect = classifyCommandSideEffect(resolvedCommand);
       const decision = this.evaluatePolicy({
         command: resolvedCommand,
+        cwd,
         mode: context.mode,
         sideEffect: inferredSideEffect,
       });
@@ -255,6 +276,7 @@ export class ToolRegistry {
 
   private evaluatePolicy(input: {
     command: string;
+    cwd: string;
     mode: 'interactive' | 'automation';
     sideEffect: 'read' | 'write' | 'destructive' | 'network';
   }): ApprovalDecision | null {
@@ -263,7 +285,7 @@ export class ToolRegistry {
     }
     return this.policyEngine.evaluateCommand({
       command: input.command,
-      cwd: process.cwd(),
+      cwd: input.cwd,
       mode: input.mode,
       sideEffect: input.sideEffect,
     });
