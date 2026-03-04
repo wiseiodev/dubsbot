@@ -1,7 +1,9 @@
 # anthropic-embedding-fallback-and-provenance Specification
 
 ## Purpose
-TBD - created by archiving change embedding-parity-hardening. Update Purpose after archive.
+Define expected Anthropic-primary embedding behavior, including native-first execution,
+failure-category-gated fallback sequencing, and required provenance metadata for both successful
+embedding results and terminal failures.
 ## Requirements
 ### Requirement: Anthropic Native-First Execution Policy
 For strategies configured with Anthropic as primary, the system SHALL attempt Anthropic native embedding first and SHALL only consider fallback providers explicitly listed in that strategy.
@@ -35,4 +37,3 @@ The system SHALL attach provenance metadata to every embedding result and termin
 #### Scenario: Provenance is emitted on terminal failure
 - **WHEN** all attempts fail or fallback is disallowed
 - **THEN** the error payload includes provenance fields for attempted providers/models, failure category, and terminal resolution reason
-

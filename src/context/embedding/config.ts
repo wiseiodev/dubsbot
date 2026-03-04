@@ -7,7 +7,7 @@ import {
 
 export function loadEmbeddingStrategyConfig(): EmbeddingStrategyConfig {
   const rawFromEnv = process.env.DUBSBOT_EMBEDDING_STRATEGY_CONFIG_JSON;
-  const raw = rawFromEnv ? JSON.parse(rawFromEnv) : buildLegacyDefaultConfig();
+  const raw = rawFromEnv ? parseJsonConfigFromEnv(rawFromEnv) : buildLegacyDefaultConfig();
   const parsed = parseEmbeddingStrategyConfig(raw);
   if (!parsed.config) {
     throw new EmbeddingStrategyConfigError(parsed.issues);
@@ -70,8 +70,24 @@ function defaultEmbeddingModel(provider: ProviderName): string {
     case 'google':
       return process.env.DUBSBOT_GOOGLE_EMBEDDING_MODEL ?? 'text-embedding-004';
     case 'anthropic':
-      return process.env.DUBSBOT_ANTHROPIC_EMBEDDING_MODEL ?? 'deterministic-v1';
+      return process.env.DUBSBOT_ANTHROPIC_EMBEDDING_MODEL ?? 'local-deterministic';
     default:
-      return 'deterministic-v1';
+      return 'local-deterministic';
+  }
+}
+
+function parseJsonConfigFromEnv(rawFromEnv: string): unknown {
+  try {
+    return JSON.parse(rawFromEnv);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new EmbeddingStrategyConfigError([
+        {
+          code: 'schema_invalid',
+          detail: `DUBSBOT_EMBEDDING_STRATEGY_CONFIG_JSON is invalid JSON: ${error.message}`,
+        },
+      ]);
+    }
+    throw error;
   }
 }

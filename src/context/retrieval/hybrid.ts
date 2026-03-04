@@ -109,7 +109,7 @@ export async function runHybridRetrieval(input: {
       path: entry.item.path,
       provider: entry.item.provider ?? 'unknown',
       model: entry.item.model ?? 'unknown',
-      embeddingProvenance: entry.item.provenance ? JSON.parse(entry.item.provenance) : null,
+      embeddingProvenance: safeJsonParse(entry.item.provenance),
       lexicalScore: entry.lexicalScore,
       vectorScore: entry.vectorScore,
       rank: index + 1,
@@ -144,4 +144,15 @@ export async function runHybridRetrieval(input: {
   });
 
   return bundle;
+}
+
+function safeJsonParse(value: string | null): unknown {
+  if (!value) {
+    return null;
+  }
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }

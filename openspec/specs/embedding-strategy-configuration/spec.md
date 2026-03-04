@@ -1,7 +1,9 @@
 # embedding-strategy-configuration Specification
 
 ## Purpose
-TBD - created by archiving change embedding-parity-hardening. Update Purpose after archive.
+Define how embedding strategies are configured and resolved across providers and models,
+including named strategy IDs, primary provider/model selection, ordered fallback chains, and
+deterministic runtime resolution with startup validation of invalid or inconsistent configurations.
 ## Requirements
 ### Requirement: Provider-Configurable Embedding Strategy
 The system SHALL support explicit embedding strategy configuration per embedding use-case, including primary provider/model selection and an ordered fallback list.
@@ -24,4 +26,3 @@ The system SHALL resolve embedding strategies deterministically for each request
 #### Scenario: Unknown strategy id is rejected
 - **WHEN** an embedding request specifies a strategy id not present in configuration
 - **THEN** the system returns a structured error and MUST NOT attempt embedding generation
-

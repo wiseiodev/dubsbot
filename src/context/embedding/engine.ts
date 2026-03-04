@@ -107,10 +107,10 @@ export async function executeEmbeddingWithStrategy(input: {
         failureCategory,
       });
 
-      const eligibleFallback = strategy.fallback.find((entry) =>
+      const eligibleFallbacks = strategy.fallback.filter((entry) =>
         entry.onFailure.includes(failureCategory)
       );
-      if (!eligibleFallback) {
+      if (eligibleFallbacks.length === 0) {
         return {
           ok: false,
           message: `Embedding failed for strategy "${currentId}" with category "${failureCategory}" and no eligible fallback.`,
@@ -124,8 +124,28 @@ export async function executeEmbeddingWithStrategy(input: {
         };
       }
 
+      const fallbackIds = eligibleFallbacks
+        .map((entry) => entry.strategyId)
+        .filter((strategyId) => !visited.has(strategyId) && !queue.includes(strategyId));
+
+      if (fallbackIds.length === 0) {
+        return {
+          ok: false,
+          message: `Embedding failed for strategy "${currentId}" with category "${failureCategory}" and exhausted fallback chain.`,
+          provenance: {
+            strategyId: input.strategyId,
+            attemptPath,
+            fallbackUsed: true,
+            failureCategory,
+            terminalReason: 'fallback_exhausted',
+          },
+        };
+      }
+
       fallbackUsed = true;
-      queue.push(eligibleFallback.strategyId);
+      for (const fallbackId of fallbackIds) {
+        queue.push(fallbackId);
+      }
     }
   }
 

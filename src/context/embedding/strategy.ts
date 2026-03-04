@@ -44,7 +44,8 @@ export type EmbeddingStrategyValidationIssue = {
     | 'duplicate_strategy'
     | 'unknown_fallback_strategy'
     | 'cyclic_fallback_path'
-    | 'unknown_default_strategy';
+    | 'unknown_default_strategy'
+    | 'schema_invalid';
   strategyId?: string;
   detail: string;
 };
@@ -76,7 +77,11 @@ export function parseEmbeddingStrategyConfig(raw: unknown): {
   if (!parsed.success) {
     return {
       issues: parsed.error.issues.map((issue) => ({
-        code: issue.path.includes('provider') ? 'unknown_provider' : 'missing_model',
+        code: issue.path.includes('provider')
+          ? 'unknown_provider'
+          : issue.path.includes('model')
+            ? 'missing_model'
+            : 'schema_invalid',
         detail: `${issue.path.join('.') || '<root>'}: ${issue.message}`,
       })),
     };

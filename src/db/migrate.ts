@@ -30,7 +30,18 @@ export async function runMigrations(): Promise<void> {
     const migrationPath = join(process.cwd(), 'src', 'db', 'migrations', file);
     const migrationSql = await readFile(migrationPath, 'utf8');
 
-    await db.exec(migrationSql);
-    await db.query('INSERT INTO schema_migrations (version) VALUES ($1)', [version]);
+    try {
+      await db.exec('BEGIN');
+      await db.exec(migrationSql);
+      await db.query('INSERT INTO schema_migrations (version) VALUES ($1)', [version]);
+      await db.exec('COMMIT');
+    } catch (error) {
+      try {
+        await db.exec('ROLLBACK');
+      } catch {
+        // Ignore rollback failures to avoid masking original migration errors.
+      }
+      throw error;
+    }
   }
 }
