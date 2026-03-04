@@ -1,7 +1,9 @@
 # retrieval-quality-proofing Specification
 
 ## Purpose
-TBD - created by archiving change retrieval-quality-proofing. Update Purpose after archive.
+Define how the system evaluates, compares, and enforces retrieval quality across lexical, vector,
+and hybrid strategies using deterministic benchmarks, grounding-focused metrics, and
+CI-enforceable quality gates.
 ## Requirements
 ### Requirement: Multi-Strategy Retrieval Evaluation
 The system MUST execute the same benchmark question set against at least three retrieval strategies: lexical-only, vector-only, and hybrid.
@@ -34,4 +36,3 @@ The system MUST enforce configurable quality gates that verify hybrid retrieval 
 #### Scenario: Gate passes on acceptable hybrid improvement
 - **WHEN** a proofing run determines that hybrid retrieval meets configured improvement thresholds versus baseline
 - **THEN** the command exits zero and marks the run as passing
-

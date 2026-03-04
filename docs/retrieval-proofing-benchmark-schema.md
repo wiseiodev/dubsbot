@@ -28,6 +28,12 @@ Top-level shape:
           "path": "src/context/retrieval/hybrid.ts",
           "title": "Hybrid retrieval source",
           "content": "..."
+        },
+        {
+          "id": "d2",
+          "path": "src/context/retrieval/rerank.ts",
+          "title": "Rerank helpers",
+          "content": "..."
         }
       ]
     }
