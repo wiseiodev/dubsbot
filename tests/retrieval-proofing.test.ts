@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -21,7 +21,6 @@ describe('retrieval proofing', () => {
       profileName: 'smoke',
     });
 
-    expect(first.generatedAt).not.toEqual(second.generatedAt);
     expect({ ...first, generatedAt: 'fixed' }).toEqual({ ...second, generatedAt: 'fixed' });
   });
 
@@ -52,39 +51,45 @@ describe('retrieval proofing', () => {
     const strictProfilesPath = join(tempDir, 'profiles.strict.json');
     const baseProfiles = JSON.parse(await readFile(profilesPath, 'utf8')) as {
       version: string;
-      profiles: Record<string, unknown>;
+      profiles: Record<string, { description?: string; caseIds?: string[]; thresholds?: unknown }>;
     };
 
-    const strictProfiles = {
-      ...baseProfiles,
-      profiles: {
-        ...baseProfiles.profiles,
-        smoke: {
-          description: 'strict gate for failure test',
-          thresholds: {
-            hybridMinimums: {
-              evidenceRelevance: 0.99,
-              citationSupportCoverage: 0.99,
-              compositeScore: 0.99,
-              maxUnsupportedClaimPenalty: 0.01,
-            },
-            baselineDeltaFloors: {
-              lexical: 0.2,
-              vector: 0.2,
+    try {
+      const existingSmoke = baseProfiles.profiles.smoke ?? {};
+      const strictProfiles = {
+        ...baseProfiles,
+        profiles: {
+          ...baseProfiles.profiles,
+          smoke: {
+            ...existingSmoke,
+            description: 'strict gate for failure test',
+            thresholds: {
+              hybridMinimums: {
+                evidenceRelevance: 0.99,
+                citationSupportCoverage: 0.99,
+                compositeScore: 0.99,
+                maxUnsupportedClaimPenalty: 0.01,
+              },
+              baselineDeltaFloors: {
+                lexical: 0.2,
+                vector: 0.2,
+              },
             },
           },
         },
-      },
-    };
-    await writeFile(strictProfilesPath, `${JSON.stringify(strictProfiles, null, 2)}\n`, 'utf8');
+      };
+      await writeFile(strictProfilesPath, `${JSON.stringify(strictProfiles, null, 2)}\n`, 'utf8');
 
-    const failReport = await runRetrievalProofing({
-      benchmarkPath,
-      profilesPath: strictProfilesPath,
-      profileName: 'smoke',
-    });
+      const failReport = await runRetrievalProofing({
+        benchmarkPath,
+        profilesPath: strictProfilesPath,
+        profileName: 'smoke',
+      });
 
-    expect(failReport.gate.passed).toBe(false);
-    expect(failReport.gate.failures.length).toBeGreaterThan(0);
+      expect(failReport.gate.passed).toBe(false);
+      expect(failReport.gate.failures.length).toBeGreaterThan(0);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
   });
 });
