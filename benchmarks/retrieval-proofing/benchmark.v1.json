@@ -1,0 +1,217 @@
+{
+  "version": "1.0",
+  "datasetName": "retrieval-proofing-core",
+  "datasetVersion": "2026.03.01",
+  "cases": [
+    {
+      "id": "repo-layout",
+      "title": "Find retrieval implementation location",
+      "query": "where is hybrid retrieval implemented",
+      "intent": "lookup",
+      "difficulty": "low",
+      "topK": 3,
+      "expectedEvidenceDocIds": ["d1", "d2"],
+      "documents": [
+        {
+          "id": "d1",
+          "path": "src/context/retrieval/hybrid.ts",
+          "title": "Hybrid retrieval source",
+          "content": "The hybrid retrieval runner combines lexical search, vector similarity, and ranking metadata."
+        },
+        {
+          "id": "d2",
+          "path": "src/context/retrieval/rerank.ts",
+          "title": "Rerank helpers",
+          "content": "hybridRerank computes weighted retrieval ordering and cosine similarity for vector retrieval."
+        },
+        {
+          "id": "d3",
+          "path": "README.md",
+          "title": "Project overview",
+          "content": "General project overview and quick start commands for local development."
+        },
+        {
+          "id": "d4",
+          "path": "src/cli/commands.ts",
+          "title": "CLI commands",
+          "content": "Registers chat, plan, index, and automations commands."
+        }
+      ]
+    },
+    {
+      "id": "quality-commands",
+      "title": "Identify quality gates",
+      "query": "what command runs lint typecheck and tests",
+      "intent": "lookup",
+      "difficulty": "medium",
+      "topK": 3,
+      "expectedEvidenceDocIds": ["d1"],
+      "documents": [
+        {
+          "id": "d1",
+          "path": "package.json",
+          "title": "Project scripts",
+          "content": "The checks script runs pnpm test, pnpm typecheck, pnpm lint, and pnpm build."
+        },
+        {
+          "id": "d2",
+          "path": "README.md",
+          "title": "README quality commands",
+          "content": "The README includes lint, typecheck, test, and build as quality commands."
+        },
+        {
+          "id": "d3",
+          "path": "src/automation/runner.ts",
+          "title": "Automation runner",
+          "content": "Executes configured prompts on cron schedules."
+        },
+        {
+          "id": "d4",
+          "path": "src/db/client.ts",
+          "title": "Database client",
+          "content": "Initializes PGLite and exposes query and exec methods."
+        }
+      ]
+    },
+    {
+      "id": "provider-preflight",
+      "title": "Provider preflight requirements",
+      "query": "which env var is required for google provider preflight",
+      "intent": "lookup",
+      "difficulty": "medium",
+      "topK": 3,
+      "expectedEvidenceDocIds": ["d1", "d2"],
+      "documents": [
+        {
+          "id": "d1",
+          "path": "src/cli/commands/chat.tsx",
+          "title": "Chat preflight",
+          "content": "Chat preflight checks provider env vars and prints setup instructions for google openai and anthropic."
+        },
+        {
+          "id": "d2",
+          "path": "README.md",
+          "title": "Environment variable docs",
+          "content": "GOOGLE_GENERATIVE_AI_API_KEY is required when using the google provider."
+        },
+        {
+          "id": "d3",
+          "path": "src/mcp/client.ts",
+          "title": "MCP client",
+          "content": "Starts and interacts with external MCP servers."
+        },
+        {
+          "id": "d4",
+          "path": "src/context/indexer/full-index.ts",
+          "title": "Indexer",
+          "content": "Indexes repository files and writes chunks and embeddings."
+        }
+      ]
+    },
+    {
+      "id": "policy-approval",
+      "title": "Approval behavior",
+      "query": "which actions require approval in interactive mode",
+      "intent": "reasoning",
+      "difficulty": "high",
+      "topK": 3,
+      "expectedEvidenceDocIds": ["d1", "d2"],
+      "documents": [
+        {
+          "id": "d1",
+          "path": "README.md",
+          "title": "Interactive approval docs",
+          "content": "Sensitive write and destructive tool actions require explicit approve, deny, or dismiss decisions in the TUI."
+        },
+        {
+          "id": "d2",
+          "path": "src/policy/engine.ts",
+          "title": "Policy engine",
+          "content": "Policy engine classifies tool side effects and enforces approval decisions."
+        },
+        {
+          "id": "d3",
+          "path": "src/context/retrieval/rerank.ts",
+          "title": "Rerank",
+          "content": "Reranks retrieval candidates with weighted score combination."
+        },
+        {
+          "id": "d4",
+          "path": "src/db/migrate.ts",
+          "title": "Migrations",
+          "content": "Applies schema migrations at startup."
+        }
+      ]
+    },
+    {
+      "id": "automation-hooks",
+      "title": "Hook trigger behavior",
+      "query": "what hooks trigger tests or typecheck",
+      "intent": "lookup",
+      "difficulty": "low",
+      "topK": 3,
+      "expectedEvidenceDocIds": ["d1"],
+      "documents": [
+        {
+          "id": "d1",
+          "path": "AGENTS.md",
+          "title": "Hook definitions",
+          "content": "file-change runs pnpm test and git-head-change runs pnpm typecheck."
+        },
+        {
+          "id": "d2",
+          "path": "README.md",
+          "title": "README automation",
+          "content": "Automations can run prompts but does not define hook command mapping."
+        },
+        {
+          "id": "d3",
+          "path": "src/automation/scheduler.ts",
+          "title": "Scheduler",
+          "content": "Cron scheduler dispatches queued automation specs."
+        },
+        {
+          "id": "d4",
+          "path": "src/agent/orchestrator.ts",
+          "title": "Orchestrator",
+          "content": "Runs gather reason act verify loops with validation retries."
+        }
+      ]
+    },
+    {
+      "id": "ci-workflow",
+      "title": "CI checks pipeline",
+      "query": "where is pr checks workflow defined",
+      "intent": "lookup",
+      "difficulty": "medium",
+      "topK": 3,
+      "expectedEvidenceDocIds": ["d1", "d2"],
+      "documents": [
+        {
+          "id": "d1",
+          "path": ".github/workflows/pr-checks.yml",
+          "title": "PR checks workflow",
+          "content": "Runs pnpm checks in CI on pull requests."
+        },
+        {
+          "id": "d2",
+          "path": "README.md",
+          "title": "Project quality commands",
+          "content": "The quality command list maps to CI checks execution."
+        },
+        {
+          "id": "d3",
+          "path": "src/tools/registry.ts",
+          "title": "Tool registry",
+          "content": "Defines registered local tools and validation."
+        },
+        {
+          "id": "d4",
+          "path": "src/db/client.ts",
+          "title": "Database client",
+          "content": "Provides thin wrapper around PGLite query execution."
+        }
+      ]
+    }
+  ]
+}

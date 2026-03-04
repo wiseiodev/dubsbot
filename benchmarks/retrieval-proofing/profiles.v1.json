@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "profiles": {
+    "smoke": {
+      "description": "Fast CI profile with a representative subset of benchmark cases",
+      "caseIds": ["repo-layout", "quality-commands", "provider-preflight"],
+      "thresholds": {
+        "hybridMinimums": {
+          "evidenceRelevance": 0.55,
+          "citationSupportCoverage": 0.75,
+          "compositeScore": 0.62,
+          "maxUnsupportedClaimPenalty": 0.45
+        },
+        "baselineDeltaFloors": {
+          "lexical": -0.03,
+          "vector": 0.02
+        }
+      }
+    },
+    "full": {
+      "description": "Full benchmark profile for deeper retrieval proofing",
+      "thresholds": {
+        "hybridMinimums": {
+          "evidenceRelevance": 0.5,
+          "citationSupportCoverage": 0.7,
+          "compositeScore": 0.58,
+          "maxUnsupportedClaimPenalty": 0.5
+        },
+        "baselineDeltaFloors": {
+          "lexical": -0.01,
+          "vector": 0.02
+        }
+      }
+    }
+  }
+}

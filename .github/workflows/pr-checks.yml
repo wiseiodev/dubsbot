@@ -43,6 +43,9 @@ jobs:
       - name: Run checks
         run: pnpm checks
 
+      - name: Run retrieval proofing (smoke profile)
+        run: pnpm dev retrieval-proof --profile smoke --output-dir artifacts/retrieval-proofing
+
       - name: Comment success summary on PR
         if: ${{ success() && github.event_name == 'pull_request' }}
         continue-on-error: true
