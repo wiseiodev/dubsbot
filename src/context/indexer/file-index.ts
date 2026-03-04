@@ -9,6 +9,9 @@ import {
   type EmbeddingProvenance,
   executeEmbeddingWithStrategy,
 } from '../embedding/engine';
+import { isSymbolEnrichmentEnabled } from '../graph/config';
+import { extractGraphDataForFile } from '../graph/extract';
+import { deleteGraphEnrichmentForFile, persistGraphEnrichmentForFile } from '../graph/persist';
 import { deterministicEmbedding } from '../retrieval/rerank';
 
 type Chunk = {
@@ -24,6 +27,7 @@ export type FileIndexSharedInput = {
   embedProvider?: ProviderAdapter;
   embeddingModel?: string;
   embeddingStrategyId?: string;
+  symbolEnrichmentEnabled?: boolean;
 };
 
 export type UpsertFileResult = {
@@ -42,6 +46,7 @@ export function createFileIndexHelpers(input: FileIndexSharedInput): {
   upsertIndexedFileByPath: (relativePath: string) => Promise<UpsertFileResult>;
   deleteIndexedFileByPath: (relativePath: string) => Promise<DeleteFileResult>;
 } {
+  const symbolEnrichmentEnabled = input.symbolEnrichmentEnabled ?? isSymbolEnrichmentEnabled();
   const isStrategyV2 = isEmbeddingStrategyV2Enabled();
   const strategyConfig = isStrategyV2 ? loadEmbeddingStrategyConfig() : null;
   const adapterCache = new Map<string, ProviderAdapter>();
@@ -173,6 +178,31 @@ export function createFileIndexHelpers(input: FileIndexSharedInput): {
       ]);
     }
 
+    if (symbolEnrichmentEnabled) {
+      try {
+        const extraction = extractGraphDataForFile({
+          repoRoot: input.repoRoot,
+          path: relativePath,
+          content,
+        });
+        await persistGraphEnrichmentForFile({
+          db: input.db,
+          repoRoot: input.repoRoot,
+          path: relativePath,
+          extraction,
+        });
+        for (const diagnostic of extraction.diagnostics) {
+          console.info(`[indexer:graph] ${diagnostic}`);
+        }
+      } catch (error) {
+        console.warn(
+          `[indexer:graph] extraction failed for ${relativePath}: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
+
     return {
       status: 'indexed',
       fileStatus,
@@ -197,6 +227,19 @@ export function createFileIndexHelpers(input: FileIndexSharedInput): {
     );
     const chunksDeleted = Number(countRows.rows[0]?.count ?? 0);
     await input.db.query('DELETE FROM files WHERE id = $1', [fileId]);
+    if (symbolEnrichmentEnabled) {
+      await deleteGraphEnrichmentForFile({
+        db: input.db,
+        repoRoot: input.repoRoot,
+        path: relativePath,
+      }).catch((error) => {
+        console.warn(
+          `[indexer:graph] cleanup failed for ${relativePath}: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      });
+    }
     return { fileDeleted: true, chunksDeleted };
   }
 

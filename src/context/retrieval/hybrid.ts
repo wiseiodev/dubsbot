@@ -14,6 +14,18 @@ type ChunkRow = {
   provenance: string | null;
 };
 
+type GraphTraversalHit = {
+  nodeId: string;
+  nodeKey: string;
+  nodeType: string;
+  edgeType: string | null;
+  connectedNodeId: string | null;
+  connectedNodeKey: string | null;
+  connectedNodeType: string | null;
+  path: string | null;
+  connectedPath: string | null;
+};
+
 async function grepSearch(
   cwd: string,
   query: string
@@ -62,6 +74,12 @@ export async function runHybridRetrieval(input: {
   const query = input.query;
   const lexical = await grepSearch(input.repoRoot, query.lexicalQuery || query.vectorQuery);
   const queryVector = deterministicEmbedding(query.vectorQuery || query.lexicalQuery);
+  const graphTraversal = await traverseGraphHints({
+    db: input.db,
+    repoRoot: input.repoRoot,
+    hints: query.graphHints,
+  });
+  const boostedPaths = new Set(graphTraversal.pathHints);
 
   const rows = await input.db.query<ChunkRow>(
     `SELECT c.id, c.content, f.path, ce.embedding::text as embedding, ce.provider, ce.model, ce.provenance::text as provenance
@@ -80,11 +98,12 @@ export async function runHybridRetrieval(input: {
         : deterministicEmbedding(row.content);
       const vectorScore = cosineSimilarity(queryVector, embedding);
       const lexicalHit = lexical.find((hit) => hit.path === row.path);
+      const graphScore = boostedPaths.has(row.path) ? 0.6 : 0.25;
       return {
         item: row,
         lexicalScore: lexicalHit ? lexicalHit.score : 0,
         vectorScore,
-        graphScore: 0.25,
+        graphScore,
       };
     })
   ).slice(0, query.maxItems);
@@ -112,6 +131,7 @@ export async function runHybridRetrieval(input: {
       embeddingProvenance: safeJsonParse(entry.item.provenance),
       lexicalScore: entry.lexicalScore,
       vectorScore: entry.vectorScore,
+      graphScore: entry.graphScore,
       rank: index + 1,
     },
   }));
@@ -135,15 +155,106 @@ export async function runHybridRetrieval(input: {
   const bundle = ContextBundleSchema.parse({
     query,
     items,
-    citations: items.map((item) => ({
-      sourceType: 'chunk',
-      sourceId: item.id,
-      path: String(item.metadata.path),
-      score: item.score,
-    })),
+    citations: [
+      ...items.map((item) => ({
+        sourceType: 'chunk',
+        sourceId: item.id,
+        path: String(item.metadata.path),
+        score: item.score,
+      })),
+      ...graphTraversal.citations,
+    ],
   });
 
   return bundle;
+}
+
+async function traverseGraphHints(input: {
+  db: DubsbotDb;
+  repoRoot: string;
+  hints: string[];
+}): Promise<{
+  pathHints: string[];
+  citations: Array<{ sourceType: 'graph_node'; sourceId: string; path?: string; score: number }>;
+}> {
+  if (input.hints.length === 0) {
+    return { pathHints: [], citations: [] };
+  }
+
+  const rows = await input.db.query<GraphTraversalHit>(
+    `SELECT
+       n.id AS "nodeId",
+       n.node_key AS "nodeKey",
+       n.node_type AS "nodeType",
+       e.edge_type AS "edgeType",
+       n2.id AS "connectedNodeId",
+       n2.node_key AS "connectedNodeKey",
+       n2.node_type AS "connectedNodeType",
+       n.payload->>'path' AS "path",
+       n2.payload->>'path' AS "connectedPath"
+     FROM context_nodes n
+     LEFT JOIN context_edges e ON e.source_node_id = n.id
+     LEFT JOIN context_nodes n2 ON n2.id = e.target_node_id
+     WHERE n.payload->>'repoRoot' = $1
+       AND (
+         n.node_key = ANY($2::text[])
+         OR n.payload->>'name' = ANY($2::text[])
+         OR n.payload->>'path' = ANY($2::text[])
+       )
+     LIMIT 200`,
+    [input.repoRoot, input.hints]
+  );
+
+  const pathHints = new Set<string>();
+  const citations: Array<{
+    sourceType: 'graph_node';
+    sourceId: string;
+    path?: string;
+    score: number;
+  }> = [];
+  for (const row of rows.rows) {
+    if (row.path) {
+      pathHints.add(row.path);
+    }
+    if (row.connectedPath) {
+      pathHints.add(row.connectedPath);
+    }
+    citations.push({
+      sourceType: 'graph_node',
+      sourceId: row.nodeId,
+      path: row.path ?? undefined,
+      score: 0.35,
+    });
+    if (row.connectedNodeId) {
+      citations.push({
+        sourceType: 'graph_node',
+        sourceId: row.connectedNodeId,
+        path: row.connectedPath ?? undefined,
+        score: 0.3,
+      });
+    }
+  }
+
+  return {
+    pathHints: [...pathHints],
+    citations: dedupeGraphCitations(citations),
+  };
+}
+
+function dedupeGraphCitations(
+  citations: Array<{ sourceType: 'graph_node'; sourceId: string; path?: string; score: number }>
+): Array<{ sourceType: 'graph_node'; sourceId: string; path?: string; score: number }> {
+  const map = new Map<
+    string,
+    { sourceType: 'graph_node'; sourceId: string; path?: string; score: number }
+  >();
+  for (const citation of citations) {
+    const existing = map.get(citation.sourceId);
+    if (!existing || citation.score > existing.score) {
+      map.set(citation.sourceId, citation);
+    }
+  }
+  return [...map.values()];
 }
 
 function safeJsonParse(value: string | null): unknown {

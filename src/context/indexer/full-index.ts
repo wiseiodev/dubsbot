@@ -9,6 +9,7 @@ export async function runFullIndex(input: {
   embedProvider?: ProviderAdapter;
   embeddingModel?: string;
   embeddingStrategyId?: string;
+  symbolEnrichmentEnabled?: boolean;
 }): Promise<{ filesIndexed: number; chunksIndexed: number }> {
   const paths = await fg(['**/*', '!node_modules/**', '!.git/**', '!dist/**', '!coverage/**'], {
     cwd: input.repoRoot,
