@@ -44,6 +44,7 @@ export async function runIncrementalIndex(input: {
   trigger?: IncrementalTrigger;
   embedProvider?: ProviderAdapter;
   embeddingModel?: string;
+  symbolEnrichmentEnabled?: boolean;
 }): Promise<IncrementalIndexResult> {
   const fileIndexHelpers = createFileIndexHelpers(input);
 
