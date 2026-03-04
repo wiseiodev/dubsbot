@@ -7,6 +7,7 @@ import {
 import { runChatCommand } from './commands/chat';
 import { runIndexCommand } from './commands/index';
 import { runPlanCommand } from './commands/plan';
+import { runRetrievalProofCommand } from './commands/retrieval-proof';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -36,6 +37,38 @@ export function createProgram(): Command {
     .action(async (repoRoot: string) => {
       await runIndexCommand(repoRoot);
     });
+
+  program
+    .command('retrieval-proof')
+    .description('Run retrieval quality proofing against benchmark profiles')
+    .option(
+      '--benchmark <path>',
+      'benchmark fixture JSON path',
+      'benchmarks/retrieval-proofing/benchmark.v1.json'
+    )
+    .option(
+      '--profiles <path>',
+      'benchmark profiles JSON path',
+      'benchmarks/retrieval-proofing/profiles.v1.json'
+    )
+    .option('--profile <name>', 'benchmark profile name', 'smoke')
+    .option(
+      '--output-dir <path>',
+      'directory for generated reports',
+      'artifacts/retrieval-proofing'
+    )
+    .option('--no-fail-on-gate', 'do not exit non-zero when gate fails')
+    .action(
+      async (options: {
+        benchmark: string;
+        profiles: string;
+        profile: string;
+        outputDir: string;
+        failOnGate: boolean;
+      }) => {
+        await runRetrievalProofCommand(options);
+      }
+    );
 
   const automations = program.command('automations').description('Manage local automations');
 

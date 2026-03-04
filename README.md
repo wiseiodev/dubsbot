@@ -33,6 +33,7 @@ pnpm dev -- chat
 pnpm dev -- chat "summarize this repo"
 pnpm dev -- plan "create a rollout plan for indexing"
 pnpm dev -- index .
+pnpm dev retrieval-proof --profile smoke
 pnpm dev -- automations list
 pnpm dev -- automations add --name "Hourly Check" --cron "0 * * * *" --prompt "summarize local status"
 pnpm dev -- automations run
@@ -94,3 +95,4 @@ Environment variables (BYOK):
 
 - Anthropic embeddings currently fall back to deterministic local vectors.
 - This project intentionally uses Biome only (no ESLint/Prettier).
+- Retrieval proofing benchmark schema/workflow docs: `docs/retrieval-proofing-benchmark-schema.md` and `docs/retrieval-proofing.md`.
