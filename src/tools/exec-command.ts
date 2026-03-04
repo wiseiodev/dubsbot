@@ -1,11 +1,47 @@
 import { spawn } from 'node:child_process';
-import type { ToolResult } from './schemas';
+import type { ToolInvocation, ToolResult } from './schemas';
 
 export type ExecCommandInput = {
   command: string;
   cwd: string;
+  toolName?: string;
   timeoutMs?: number;
 };
+
+const DESTRUCTIVE_PATTERNS = [
+  /\brm\s+-rf\b/i,
+  /\bmkfs\b/i,
+  /\bdd\s+if=/i,
+  /\bshutdown\b/i,
+  /\breboot\b/i,
+  /\bchmod\b/i,
+];
+
+const WRITE_PATTERNS = [
+  />/,
+  /\btee\b/i,
+  /\bmv\b/i,
+  /\bcp\b/i,
+  /\btouch\b/i,
+  /\bmkdir\b/i,
+  /\bpnpm\s+lint(?::\w+)?(?:\s+--\w+)?\s+--write\b/i,
+  /\bgit\s+add\b/i,
+];
+
+const NETWORK_PATTERNS = [/\bcurl\b/i, /\bwget\b/i, /\bnpm\s+install\b/i, /\bpnpm\s+add\b/i];
+
+export function classifyCommandSideEffect(command: string): ToolInvocation['sideEffect'] {
+  if (DESTRUCTIVE_PATTERNS.some((pattern) => pattern.test(command))) {
+    return 'destructive';
+  }
+  if (WRITE_PATTERNS.some((pattern) => pattern.test(command))) {
+    return 'write';
+  }
+  if (NETWORK_PATTERNS.some((pattern) => pattern.test(command))) {
+    return 'network';
+  }
+  return 'read';
+}
 
 export async function executeCommand(input: ExecCommandInput): Promise<ToolResult> {
   const timeoutMs = input.timeoutMs ?? 120_000;
@@ -37,7 +73,7 @@ export async function executeCommand(input: ExecCommandInput): Promise<ToolResul
     child.on('close', (code) => {
       clearTimeout(timer);
       resolve({
-        tool: 'exec-command',
+        tool: input.toolName ?? 'exec-command',
         ok: code === 0 && !killedByTimeout,
         summary: killedByTimeout
           ? 'Command timed out'

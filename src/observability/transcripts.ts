@@ -7,6 +7,7 @@ export type TranscriptEntry = {
   sessionId: string;
   role: 'user' | 'assistant' | 'system';
   text: string;
+  payload?: Record<string, unknown>;
 };
 
 export class TranscriptStore {
