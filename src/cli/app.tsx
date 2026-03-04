@@ -400,7 +400,7 @@ function getPolicyOutcome(result: ToolResult): {
   reason: string;
   sideEffect: ToolInvocation['sideEffect'];
 } | null {
-  const candidate = result.payload.policyOutcome;
+  const candidate = result.payload.policyOutcome ?? result.payload.policyOutcomeLegacy;
   if (!candidate || typeof candidate !== 'object') {
     return null;
   }

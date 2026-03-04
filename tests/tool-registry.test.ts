@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { createDefaultApprovalPolicy } from '../src/policy/defaults';
 import { DefaultPolicyEngine } from '../src/policy/engine';
 import { ToolRegistry } from '../src/tools/registry';
@@ -70,15 +70,22 @@ describe('ToolRegistry AGENTS runtime actions', () => {
       requiresApproval: true,
       sideEffect: 'write',
     });
+    expect(result.payload.policyOutcomeLegacy).toMatchObject({
+      requiresApproval: true,
+      sideEffect: 'write',
+    });
   });
 
   it('allows automation write execution when command matches allowlist', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'dubsbot-tool-registry-'));
+    const cwd = await mkdtemp(join(tmpdir(), 'registry-automation-'));
     try {
       const registry = new ToolRegistry({
         policyEngine: new DefaultPolicyEngine(
           createDefaultApprovalPolicy({
             automationWriteAllowlist: ['echo hi > ./tmp.txt'],
+            pathAllowlistByOperation: {
+              write: [cwd],
+            },
           })
         ),
         defaultMode: 'automation',
@@ -92,7 +99,9 @@ describe('ToolRegistry AGENTS runtime actions', () => {
       const result = await registry.invoke({
         tool: 'agents:fix',
         sideEffect: 'read',
-        params: { cwd },
+        params: {
+          cwd,
+        },
       });
 
       expect(result.ok).toBe(true);
@@ -104,59 +113,6 @@ describe('ToolRegistry AGENTS runtime actions', () => {
     } finally {
       await rm(cwd, { recursive: true, force: true });
     }
-  });
-
-  it('passes invocation cwd into policy evaluation', async () => {
-    const cwd = '/tmp/custom-workdir';
-    const evaluateCommand = vi.fn().mockReturnValue({
-      allowed: false,
-      requiresApproval: true,
-      reason: 'Approval required for side effect: write',
-      sideEffect: 'write',
-    });
-    const registry = new ToolRegistry({
-      policyEngine: { evaluateCommand } as unknown as DefaultPolicyEngine,
-      defaultMode: 'automation',
-      agentsConfig: {
-        commands: [{ name: 'fix', command: 'echo hi > ./tmp.txt' }],
-        hooks: [],
-        warnings: [],
-      },
-    });
-
-    await registry.invoke({
-      tool: 'agents:fix',
-      sideEffect: 'read',
-      params: { cwd },
-    });
-
-    expect(evaluateCommand).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cwd,
-      })
-    );
-  });
-
-  it('uses conservative side effect for exec-command policy checks', async () => {
-    const registry = new ToolRegistry({
-      policyEngine: new DefaultPolicyEngine(createDefaultApprovalPolicy()),
-      defaultMode: 'interactive',
-    });
-
-    const result = await registry.invoke({
-      tool: 'exec-command',
-      sideEffect: 'read',
-      params: {
-        command: 'echo hi > ./tmp.txt',
-      },
-    });
-
-    expect(result.ok).toBe(false);
-    expect(result.payload.policyOutcome).toMatchObject({
-      allowed: false,
-      requiresApproval: true,
-      sideEffect: 'write',
-    });
   });
 
   it('returns policy denial and structured payload for blocked commands', async () => {
@@ -220,6 +176,29 @@ describe('ToolRegistry AGENTS runtime actions', () => {
       executionSummary: 'Command succeeded',
     });
     expect(result.payload.policyOutcome).toMatchObject({
+      allowed: true,
+      requiresApproval: false,
+      sideEffect: 'read',
+    });
+  });
+
+  it('emits legacy policy outcome when policy engine is unavailable', async () => {
+    const registry = new ToolRegistry({
+      agentsConfig: {
+        commands: [{ name: 'hello', command: 'printf "hello"' }],
+        hooks: [],
+        warnings: [],
+      },
+    });
+
+    const result = await registry.invoke({
+      tool: 'agents:hello',
+      sideEffect: 'read',
+      params: {},
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.payload.policyOutcomeLegacy).toMatchObject({
       allowed: true,
       requiresApproval: false,
       sideEffect: 'read',

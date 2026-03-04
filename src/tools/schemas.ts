@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const ToolSideEffectSchema = z.enum(['read', 'write', 'destructive', 'network']);
+export type ToolSideEffect = z.infer<typeof ToolSideEffectSchema>;
 
 export const ToolInvocationSchema = z.object({
   tool: z.string().min(1),
