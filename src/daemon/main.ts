@@ -63,26 +63,27 @@ async function main(): Promise<void> {
   });
 
   const fsWatcher = new RepoFsWatcher(repoRoot);
-  fsWatcher.on('change', async ({ path }) => {
+  fsWatcher.on('change', async ({ path, type }) => {
     await runIncrementalIndex({
       db,
       repoRoot,
-      changedPaths: [path],
+      operations: [{ path, type: type === 'unlink' ? 'delete' : 'upsert' }],
+      trigger: { source: 'fs', event: type },
       embedProvider: provider,
     });
-    await hooks.trigger('file-change', { cwd: repoRoot, payload: { path } });
+    await hooks.trigger('file-change', { cwd: repoRoot, payload: { path, type } });
   });
   fsWatcher.start();
 
   const gitWatcher = new GitWatcher(repoRoot);
-  gitWatcher.on('change', async () => {
+  gitWatcher.on('change', async ({ previous, current }) => {
     await runIncrementalIndex({
       db,
       repoRoot,
-      changedPaths: ['.git/HEAD'],
+      trigger: { source: 'git-head', previous, current },
       embedProvider: provider,
     });
-    await hooks.trigger('git-head-change', { cwd: repoRoot });
+    await hooks.trigger('git-head-change', { cwd: repoRoot, payload: { previous, current } });
   });
   gitWatcher.start();
 
