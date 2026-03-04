@@ -1,5 +1,6 @@
 import { AgentOrchestrator } from '../agent/orchestrator';
 import { loadAgentsConfig } from '../config/agents-loader';
+import { loadEmbeddingStrategyConfig } from '../context/embedding/config';
 import { createDb } from '../db/client';
 import { runMigrations } from '../db/migrate';
 import { OptionalOtelExporter } from '../observability/otel';
@@ -13,6 +14,7 @@ import { ToolRegistry } from '../tools/registry';
 export async function createRuntime() {
   await runMigrations();
   const db = await createDb();
+  const embeddingStrategyConfig = loadEmbeddingStrategyConfig();
   const agentsConfig = await loadAgentsConfig(process.cwd());
   const provider = createProviderAdapter(detectProvider());
   const policyEngine = new DefaultPolicyEngine(createDefaultApprovalPolicy());
@@ -24,6 +26,7 @@ export async function createRuntime() {
 
   return {
     db,
+    embeddingStrategyConfig,
     provider,
     policyEngine,
     orchestrator,

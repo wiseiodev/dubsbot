@@ -9,6 +9,9 @@ type ChunkRow = {
   content: string;
   path: string;
   embedding: string | null;
+  provider: string | null;
+  model: string | null;
+  provenance: string | null;
 };
 
 async function grepSearch(
@@ -61,7 +64,7 @@ export async function runHybridRetrieval(input: {
   const queryVector = deterministicEmbedding(query.vectorQuery || query.lexicalQuery);
 
   const rows = await input.db.query<ChunkRow>(
-    `SELECT c.id, c.content, f.path, ce.embedding::text as embedding
+    `SELECT c.id, c.content, f.path, ce.embedding::text as embedding, ce.provider, ce.model, ce.provenance::text as provenance
      FROM chunks c
      JOIN files f ON f.id = c.file_id
      LEFT JOIN chunk_embeddings ce ON ce.chunk_id = c.id
@@ -104,6 +107,9 @@ export async function runHybridRetrieval(input: {
     score: entry.totalScore,
     metadata: {
       path: entry.item.path,
+      provider: entry.item.provider ?? 'unknown',
+      model: entry.item.model ?? 'unknown',
+      embeddingProvenance: entry.item.provenance ? JSON.parse(entry.item.provenance) : null,
       lexicalScore: entry.lexicalScore,
       vectorScore: entry.vectorScore,
       rank: index + 1,

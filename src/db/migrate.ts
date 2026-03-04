@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import fg from 'fast-glob';
 import { createDb } from './client';
 
 export async function runMigrations(): Promise<void> {
@@ -8,17 +9,28 @@ export async function runMigrations(): Promise<void> {
     'CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());'
   );
 
-  const migrationPath = join(process.cwd(), 'src', 'db', 'migrations', '0001_init.sql');
-  const migrationSql = await readFile(migrationPath, 'utf8');
+  const migrationFiles = await fg(['*.sql'], {
+    cwd: join(process.cwd(), 'src', 'db', 'migrations'),
+    onlyFiles: true,
+    absolute: false,
+  });
+  migrationFiles.sort();
 
-  const already = await db.query<{ exists: boolean }>(
-    "SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = '0001_init') AS exists"
+  const existing = await db.query<{ version: string }>(
+    'SELECT version FROM schema_migrations ORDER BY version ASC'
   );
+  const applied = new Set(existing.rows.map((row) => row.version));
 
-  if (already.rows[0]?.exists) {
-    return;
+  for (const file of migrationFiles) {
+    const version = file.replace(/\.sql$/, '');
+    if (applied.has(version)) {
+      continue;
+    }
+
+    const migrationPath = join(process.cwd(), 'src', 'db', 'migrations', file);
+    const migrationSql = await readFile(migrationPath, 'utf8');
+
+    await db.exec(migrationSql);
+    await db.query('INSERT INTO schema_migrations (version) VALUES ($1)', [version]);
   }
-
-  await db.exec(migrationSql);
-  await db.query("INSERT INTO schema_migrations (version) VALUES ('0001_init')");
 }
