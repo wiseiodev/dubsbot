@@ -3,6 +3,10 @@ import { EventHookRunner } from '../automation/event-hooks';
 import { AutomationRunner } from '../automation/runner';
 import { AutomationScheduler } from '../automation/scheduler';
 import { loadAgentsConfig } from '../config/agents-loader';
+import {
+  isEmbeddingStrategyV2Enabled,
+  loadEmbeddingStrategyConfig,
+} from '../context/embedding/config';
 import { RepoFsWatcher } from '../context/fs-watcher';
 import { GitWatcher } from '../context/git-watcher';
 import { runIncrementalIndex } from '../context/indexer/incremental';
@@ -15,6 +19,9 @@ import { createProviderAdapter, detectProvider } from '../providers';
 async function main(): Promise<void> {
   await runMigrations();
   const db = await createDb();
+  if (isEmbeddingStrategyV2Enabled()) {
+    loadEmbeddingStrategyConfig();
+  }
   const provider = createProviderAdapter(detectProvider());
   const policy = new DefaultPolicyEngine(createDefaultApprovalPolicy());
   const orchestrator = new AgentOrchestrator({ provider, policyEngine: policy });

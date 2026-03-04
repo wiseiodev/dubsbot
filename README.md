@@ -90,9 +90,13 @@ Environment variables (BYOK):
 - `DUBSBOT_ANTHROPIC_MODEL`
 - `DUBSBOT_GOOGLE_MODEL` (defaults to `gemini-3.1-pro-preview`)
 - `DUBSBOT_OTEL_ENABLED=1` to enable telemetry export hooks
+- `DUBSBOT_EMBEDDING_STRATEGY_V2=1` to enable explicit embedding strategy resolution/fallback
+- `DUBSBOT_EMBEDDING_STRATEGY_CONFIG_JSON` to provide explicit strategy config
+- `DUBSBOT_EMBEDDING_PROVENANCE_LOG=1` to emit embedding provenance log lines
 
 ## Notes
 
 - Anthropic embeddings currently fall back to deterministic local vectors.
 - This project intentionally uses Biome only (no ESLint/Prettier).
 - Retrieval proofing benchmark schema/workflow docs: `docs/retrieval-proofing-benchmark-schema.md` and `docs/retrieval-proofing.md`.
+- Embedding strategy rollout guide: `docs/embedding-strategy-rollout.md`.
