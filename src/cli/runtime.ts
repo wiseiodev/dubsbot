@@ -1,8 +1,11 @@
 import { AgentOrchestrator } from '../agent/orchestrator';
 import { loadAgentsConfig } from '../config/agents-loader';
+import { loadMcpServerConfig } from '../config/mcp-loader';
 import { loadEmbeddingStrategyConfig } from '../context/embedding/config';
 import { createDb } from '../db/client';
 import { runMigrations } from '../db/migrate';
+import { McpBridgeService } from '../mcp/bridge';
+import { DefaultMcpServerAdapter } from '../mcp/default-adapter';
 import { OptionalOtelExporter } from '../observability/otel';
 import { TraceStore } from '../observability/traces';
 import { TranscriptStore } from '../observability/transcripts';
@@ -18,6 +21,20 @@ export async function createRuntime() {
   const agentsConfig = await loadAgentsConfig(process.cwd());
   const provider = createProviderAdapter(detectProvider());
   const policyEngine = new DefaultPolicyEngine(createDefaultApprovalPolicy());
+  const traces = new TraceStore();
+  const mcpBridge = new McpBridgeService({
+    adapter: new DefaultMcpServerAdapter(loadMcpServerConfig()),
+    policyEngine,
+    auditSink: {
+      append: async (event) => {
+        await traces.write({
+          timestamp: event.timing.endedAt,
+          type: `mcp.bridge.${event.operation}`,
+          payload: event as unknown as Record<string, unknown>,
+        });
+      },
+    },
+  });
   const orchestrator = new AgentOrchestrator({
     provider,
     policyEngine,
@@ -29,8 +46,9 @@ export async function createRuntime() {
     embeddingStrategyConfig,
     provider,
     policyEngine,
+    mcpBridge,
     orchestrator,
-    traces: new TraceStore(),
+    traces,
     transcripts: new TranscriptStore(),
     otel: new OptionalOtelExporter(),
     tools: new ToolRegistry({
