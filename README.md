@@ -75,7 +75,7 @@ pnpm build
 - `src/db` - PGLite client and migrations
 - `src/automation` - scheduler, hooks, automation runner
 - `src/observability` - traces/transcripts and optional OTel
-- `src/mcp` - MCP process client
+- `src/mcp` - MCP process client and policy-gated bridge
 - `tests` - unit/integration-facing tests for core behavior
 
 ## Configuration
@@ -90,6 +90,7 @@ Environment variables (BYOK):
 - `DUBSBOT_ANTHROPIC_MODEL`
 - `DUBSBOT_GOOGLE_MODEL` (defaults to `gemini-3.1-pro-preview`)
 - `DUBSBOT_OTEL_ENABLED=1` to enable telemetry export hooks
+- `DUBSBOT_MCP_SERVERS_JSON` to configure MCP servers for bridge discovery/connect/execute
 - `DUBSBOT_EMBEDDING_STRATEGY_V2=1` to enable explicit embedding strategy resolution/fallback
 - `DUBSBOT_EMBEDDING_STRATEGY_CONFIG_JSON` to provide explicit strategy config
 - `DUBSBOT_EMBEDDING_PROVENANCE_LOG=1` to emit embedding provenance log lines
@@ -100,3 +101,4 @@ Environment variables (BYOK):
 - This project intentionally uses Biome only (no ESLint/Prettier).
 - Retrieval proofing benchmark schema/workflow docs: `docs/retrieval-proofing-benchmark-schema.md` and `docs/retrieval-proofing.md`.
 - Embedding strategy rollout guide: `docs/embedding-strategy-rollout.md`.
+- MCP bridge contracts/rollout guide: `docs/mcp-bridge-rollout.md`.
